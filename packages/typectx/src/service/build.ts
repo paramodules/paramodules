@@ -62,10 +62,6 @@ export function _build<THIS extends UnknownAppService>(
 
     const { deps, resolved } = Object.keys(supplies).reduce(
         (acc, name) => {
-            if (!this._team.some((member) => member.name === name)) {
-                return acc
-            }
-
             Object.defineProperty(acc.resolved, name, {
                 get() {
                     return resolve()[name]
