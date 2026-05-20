@@ -1,5 +1,5 @@
 {
-    "name": "typectx-monorepo",
+    "name": "@marketjs/trademarks-monorepo",
     "private": true,
     "type": "module",
     "scripts": {

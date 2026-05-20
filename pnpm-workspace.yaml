@@ -1,11 +1,11 @@
 publicHoistPattern:
     - "*eslint*"
-    - "!@typectx/config.eslint"
+    - "!@marketjs/config.eslint"
 linkWorkspacePackages: deep
 preferWorkspacePackages: true
 packages:
     - "packages/*"
-    - "packages/@typectx/*"
-    - "packages/@typectx/config/*"
-    - "packages/@typectx/react/*"
-    - "packages/@typectx/react/examples/*"
+    - "packages/@marketjs/*"
+    - "packages/@marketjs/config/*"
+    - "packages/@marketjs/react/*"
+    - "packages/@marketjs/react/examples/*"

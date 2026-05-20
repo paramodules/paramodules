@@ -52,12 +52,12 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v5
               with:
-                  token: ${{ secrets.TYPECTX_PROTECTED_REF_ADMIN }}
+                  token: ${{ secrets.MARKETJS_PROTECTED_REF_ADMIN }}
 
             - name: Configure Git
               run: |
                   git config --local user.email "action@github.com"
-                  git config --local user.name "typectx-bot"
+                  git config --local user.name "marketjs-bot"
 
             - name: Set docs branch
               run: |

@@ -33,7 +33,7 @@ jobs:
         if: contains(github.event.release.tag_name, 'docs') == false
         environment:
             name: npm-publish
-            url: https://www.npmjs.com/package/typectx
+            url: https://www.npmjs.com/package/@marketjs/trademarks
         runs-on: ubuntu-latest
         permissions:
             contents: read # Required for checkout
@@ -52,17 +52,17 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
                   package-manager-cache: false
 
-            - name: Download typectx build artifacts
+            - name: Download @marketjs/trademarks build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: typectx-build
-                  path: ./packages/typectx/dist
+                  name: @marketjs/trademarks-build
+                  path: ./packages/@marketjs/trademarks/dist
 
-            - name: Download @typectx/react build artifacts
+            - name: Download @marketjs/react build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: "typectx-react-build"
-                  path: ./packages/@typectx/react/main/dist
+                  name: "@marketjs/react-build"
+                  path: ./packages/@marketjs/react/main/dist
 
             - name: Set version from release tag
               run: |
@@ -71,90 +71,90 @@ jobs:
                   echo "Setting version to: $VERSION"
                   echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-            - name: Set version for typectx
-              working-directory: ./packages/typectx
+            - name: Set version for @marketjs/trademarks
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   npm version $VERSION --no-git-tag-version
-                  echo "typectx package.json version is now: $(cat package.json | jq -r .version)"
+                  echo "@marketjs/trademarks package.json version is now: $(cat package.json | jq -r .version)"
 
-            - name: Set version for @typectx/react
-              working-directory: ./packages/@typectx/react/main
+            - name: Set version for @marketjs/react
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   npm version $VERSION --no-git-tag-version
-                  echo "@typectx/react package.json version is now: $(cat package.json | jq -r .version)"
+                  echo "@marketjs/react package.json version is now: $(cat package.json | jq -r .version)"
 
             - name: Install dependencies to resolve workspace:^
               working-directory: .
               run: pnpm install
 
-            - name: Dry publish typectx
+            - name: Dry publish @marketjs/trademarks
               if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/typectx
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   pnpm publish --tag dry --dry-run --no-git-checks
 
-            - name: Dry publish @typectx/react
+            - name: Dry publish @marketjs/react
               if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/@typectx/react/main
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   pnpm publish --tag dry --dry-run --no-git-checks
 
-            - name: Publish typectx to Canary
+            - name: Publish @marketjs/trademarks to Canary
               if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/typectx
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   pnpm publish --tag canary --no-git-checks
 
-            - name: Publish @typectx/react to Canary
+            - name: Publish @marketjs/react to Canary
               if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/@typectx/react/main
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   pnpm publish --tag canary --no-git-checks
 
-            - name: Publish typectx to Alpha
+            - name: Publish @marketjs/trademarks to Alpha
               if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/typectx
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   pnpm publish --tag alpha --no-git-checks
 
-            - name: Publish @typectx/react to Alpha
+            - name: Publish @marketjs/react to Alpha
               if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/@typectx/react/main
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   pnpm publish --tag alpha --no-git-checks
 
-            - name: Publish typectx to Beta
+            - name: Publish @marketjs/trademarks to Beta
               if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/typectx
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   pnpm publish --tag beta --no-git-checks
 
-            - name: Publish @typectx/react to Beta
+            - name: Publish @marketjs/react to Beta
               if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/@typectx/react/main
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   pnpm publish --tag beta --no-git-checks
 
-            - name: Publish typectx to RC
+            - name: Publish @marketjs/trademarks to RC
               if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/typectx
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   pnpm publish --tag rc --no-git-checks
 
-            - name: Publish @typectx/react to RC
+            - name: Publish @marketjs/react to RC
               if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/@typectx/react/main
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   pnpm publish --tag rc --no-git-checks
 
-            - name: Publish typectx to Latest
+            - name: Publish @marketjs/trademarks to Latest
               if: contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/typectx
+              working-directory: ./packages/@marketjs/trademarks
               run: |
                   pnpm publish --tag latest --no-git-checks
 
-            - name: Publish @typectx/react to Latest
+            - name: Publish @marketjs/react to Latest
               if: contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/@typectx/react/main
+              working-directory: ./packages/@marketjs/react/main
               run: |
                   pnpm publish --tag latest --no-git-checks

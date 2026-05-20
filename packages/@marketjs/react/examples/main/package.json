@@ -1,0 +1,67 @@
+{
+    "name": "@marketjs/react.example",
+    "version": "0.0.0",
+    "type": "module",
+    "private": false,
+    "description": "A comprehensive React example showcasing all @marketjs features with a social media wireframe",
+    "keywords": [
+        "react",
+        "@marketjs/trademarks",
+        "dependency-injection",
+        "typescript",
+        "vite",
+        "example"
+    ],
+    "author": "@marketjs",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/market-js/trademarks.git"
+    },
+    "homepage": "https://github.com/market-js/trademarks/tree/main/packages/@marketjs/react/examples/main#readme",
+    "bugs": {
+        "url": "https://github.com/market-js/trademarks/issues"
+    },
+    "scripts": {
+        "dev": "fuser -k 3001/tcp || true; vite",
+        "start": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "test": "vitest",
+        "test:run": "vitest run --typecheck",
+        "test:ui": "vitest --ui"
+    },
+    "dependencies": {
+        "@tailwindcss/vite": "^4.1.18",
+        "@tanstack/query-core": "^5.90.14",
+        "@tanstack/react-query": "^5.90.14",
+        "@marketjs/react": "latest",
+        "clsx": "^2.1.1",
+        "date-fns": "^2.30.0",
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3",
+        "@marketjs/trademarks": "latest"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.39.2",
+        "@testing-library/dom": "^10.4.1",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.1",
+        "@testing-library/user-event": "^14.6.1",
+        "@types/react": "^19.2.7",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^4.7.0",
+        "@vitest/ui": "^1.6.1",
+        "autoprefixer": "^10.4.23",
+        "eslint": "^9.39.2",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "jsdom": "^27.4.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.18",
+        "typescript": "^6.0.2",
+        "typescript-eslint": "^8.50.1",
+        "vite": "^5.4.21",
+        "vitest": "^1.6.1"
+    }
+}

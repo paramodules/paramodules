@@ -1,0 +1,46 @@
+{
+    "name": "@marketjs/trademarks",
+    "type": "module",
+    "version": "0.0.0",
+    "description": "Stateless primitive for full-stack application architecture, inspired by signals",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "author": "@marketjs",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/market-js/trademarks.git"
+    },
+    "imports": {
+        "#*": "./src/*.ts"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "watch": "tsup --watch",
+        "test": "vitest",
+        "test:run": "vitest run --typecheck",
+        "typecheck": "vitest run --typecheck.only"
+    },
+    "devDependencies": {
+        "@marketjs/config.eslint": "workspace:*",
+        "@marketjs/config.typescript": "workspace:*",
+        "vitest": "^4.0.10",
+        "@vitest/coverage-v8": "^4.0.10",
+        "memoize": "^10.1.0",
+        "typescript": "^6.0.2",
+        "tsup": "^8.5.1",
+        "turbo": "^2.5.5"
+    }
+}

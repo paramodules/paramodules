@@ -1,0 +1,54 @@
+{
+    "name": "@marketjs/react",
+    "type": "module",
+    "version": "0.0.0",
+    "description": "Hooks to synchronize React client components with @marketjs/trademarks",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "author": "@marketjs",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/market-js/trademarks.git"
+    },
+    "homepage": "https://github.com/market-js/trademarks/tree/main/packages/@marketjs/react/main#readme",
+    "bugs": {
+        "url": "https://github.com/market-js/trademarks/issues"
+    },
+    "imports": {
+        "#*": "./src/*.ts"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "watch": "tsup --watch"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "devDependencies": {
+        "@marketjs/config.eslint": "*",
+        "@marketjs/config.typescript": "*",
+        "@types/react": "^19.2.6",
+        "@marketjs/trademarks": "workspace:^",
+        "typescript": "^6.0.2",
+        "tsup": "^8.5.0",
+        "turbo": "^2.5.5"
+    },
+    "peerDependencies": {
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3",
+        "@marketjs/trademarks": "workspace:^"
+    }
+}
