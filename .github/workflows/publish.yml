@@ -55,7 +55,7 @@ jobs:
             - name: Download @marketjs/trademarks build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: @marketjs/trademarks-build
+                  name: "@marketjs/trademarks-build"
                   path: ./packages/@marketjs/trademarks/dist
 
             - name: Download @marketjs/react build artifacts

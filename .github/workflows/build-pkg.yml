@@ -32,7 +32,7 @@ jobs:
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: @marketjs/trademarks-build
+                  name: "@marketjs/trademarks-build"
                   path: |
                       packages/@marketjs/trademarks/dist
 
