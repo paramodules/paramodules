@@ -1,4 +1,4 @@
-import type { UnknownTM } from "#types/public"
+import type { UnknownService } from "#types/public"
 
 type Id<T, CASE extends "self" | "name"> =
     CASE extends "name" ?
@@ -19,21 +19,6 @@ export type MergeTuplesBy<
             MergeTuplesBy<CASE, Tail, WITH, ACC>
         :   MergeTuplesBy<CASE, Tail, WITH, [...ACC, Head]>
     :   [...ACC, ...WITH]
-
-/**
- * Merges two service arrays by filtering out OLD services that match NEW service names,
- * then appending NEW services. This ensures hired services override existing ones.
- * Used internally by the `hire` method to create the merged team.
- *
- * @typeParam OLD - The original array of services
- * @typeParam NEW - The array of new services to merge in (overriding matching names)
- * @returns A merged array with NEW services replacing matching OLD services
- * @public
- */
-export type MergeServiceTuples<
-    OLD extends UnknownTM[],
-    WITH extends UnknownTM[]
-> = MergeTuplesBy<"name", OLD, WITH>
 
 export type MergeStringTuples<
     OLD extends readonly string[],

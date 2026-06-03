@@ -1,68 +1,68 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { tm } from "#index"
+import { service } from "#index"
 import { index, once, sleep } from "#utils"
 
-describe("trademarks", () => {
+describe("services", () => {
     beforeEach(() => {
         vi.clearAllMocks()
     })
 
     describe("Specs", () => {
         it("should add a spec and specify it", () => {
-            const $spec = tm("spec").spec<string>()
+            const $spec = service("spec").spec<string>()
 
-            const supply = $spec.of("test-value")
+            const supplier = $spec.of("test-value")
 
-            expect(supply.unpack()).toBe("test-value")
-            expect(supply.tm.name).toBe("spec")
-            expect($spec.name).toBe("spec")
+            expect(supplier.get()).toBe("test-value")
+            expect(supplier.service.tm).toBe("spec")
+            expect($spec.tm).toBe("spec")
             expect($spec._spec).toBe(true)
         })
 
-        it("should allow creating trademarks with the same name independently", () => {
-            const $a = tm("duplicate").spec<string>()
-            const $b = tm("duplicate").spec<string>()
+        it("should allow creating services with the same name independently", () => {
+            const $a = service("duplicate").spec<string>()
+            const $b = service("duplicate").spec<string>()
 
-            expect($a.name).toBe("duplicate")
-            expect($b.name).toBe("duplicate")
+            expect($a.tm).toBe("duplicate")
+            expect($b.tm).toBe("duplicate")
         })
 
         it("should handle different types correctly", () => {
-            const $string = tm("string").spec<string>()
-            const $number = tm("number").spec<number>()
-            const $object = tm("object").spec<{
+            const $string = service("string").spec<string>()
+            const $number = service("number").spec<number>()
+            const $object = service("object").spec<{
                 name: string
             }>()
 
-            expect($string.of("hello").unpack()).toBe("hello")
-            expect($number.of(42).unpack()).toBe(42)
-            expect($object.of({ name: "test" }).unpack()).toEqual({
+            expect($string.of("hello").get()).toBe("hello")
+            expect($number.of(42).get()).toBe(42)
+            expect($object.of({ name: "test" }).get()).toEqual({
                 name: "test"
             })
         })
     })
 
-    describe("Services", () => {
-        it("should add a service with no dependencies", () => {
-            const $service = tm("service").service({
-                factory: () => "service"
+    describe("Modules", () => {
+        it("should add a module with no dependencies", () => {
+            const $module = service("module").module({
+                factory: () => "module"
             })
 
-            expect($service.buy({}).unpack()).toBe("service")
-            expect($service.name).toBe("service")
-            expect($service._service).toBe(true)
+            expect($module.call({}).get()).toBe("module")
+            expect($module.tm).toBe("module")
+            expect($module._module).toBe(true)
         })
 
-        it("should add a service with dependencies", () => {
-            const $A = tm("A").service({
+        it("should add a module with dependencies", () => {
+            const $A = service("A").module({
                 factory: () => "A"
             })
 
-            const $B = tm("B").service({
+            const $B = service("B").module({
                 factory: () => "B"
             })
 
-            const $test = tm("test").service({
+            const $test = service("test").module({
                 required: [$A, $B],
                 factory: ({ A, B }) => {
                     return {
@@ -72,7 +72,7 @@ describe("trademarks", () => {
                 }
             })
 
-            expect($test.buy({}).unpack()).toEqual({
+            expect($test.call({}).get()).toEqual({
                 A: "A",
                 B: "B"
             })
@@ -80,16 +80,16 @@ describe("trademarks", () => {
     })
 
     describe("Supply Chain", () => {
-        it("Buy a service without specifications", () => {
-            const $A = tm("A").service({
+        it("Buy a module without specifications", () => {
+            const $A = service("A").module({
                 factory: () => "A"
             })
 
-            const $B = tm("B").service({
+            const $B = service("B").module({
                 factory: () => "B"
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$A, $B],
                 factory: ({ A, B }) => {
                     return {
@@ -99,18 +99,18 @@ describe("trademarks", () => {
                 }
             })
 
-            expect($main.buy({}).unpack()).toEqual({
+            expect($main.call({}).get()).toEqual({
                 A: "A",
                 B: "B"
             })
         })
 
-        it("should respect service specifications and not override them during assembly", () => {
-            const $resource = tm("resource").service({
+        it("should respect module specifications and not override them during call", () => {
+            const $resource = service("resource").module({
                 factory: () => "resource"
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$resource],
                 factory: ({ resource }) => {
                     return {
@@ -120,18 +120,18 @@ describe("trademarks", () => {
             })
 
             expect(
-                $main.buy(index($resource.of("initial-resource"))).unpack()
+                $main.call(index($resource.of("initial-resource"))).get()
             ).toEqual({
                 resource: "initial-resource"
             })
         })
 
         it("should enable context switching by calling ctx() in a factory", () => {
-            const $config = tm("config").spec<string>()
-            const $name = tm("name").spec<string>()
-            const $count = tm("count").spec<number>()
+            const $config = service("config").spec<string>()
+            const $name = service("name").spec<string>()
+            const $count = service("count").spec<number>()
 
-            const $test = tm("test").service({
+            const $test = service("test").module({
                 required: [$config, $name, $count],
                 factory: ({ config, name, count }) => {
                     return {
@@ -142,30 +142,30 @@ describe("trademarks", () => {
                 }
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$test],
-                factory: (deps, ctx) => {
+                factory: (supplies, ctx) => {
                     const newTestA = ctx($test)
-                        .buy(
+                        .call(
                             index(
                                 $config.of("new-config"),
                                 $name.of("new-name"),
                                 $count.of(42)
                             )
                         )
-                        .unpack()
+                        .get()
 
                     const newTestB = ctx($test)
-                        .buy(index($config.of("new-config")))
-                        .unpack()
+                        .call(index($config.of("new-config")))
+                        .get()
 
                     const newTestC = ctx($test)
-                        .buy(index($name.of("new-name")))
-                        .unpack()
+                        .call(index($name.of("new-name")))
+                        .get()
 
                     const newTestD = ctx($test)
-                        .buy(index($config.of("new-config"), $count.of(42)))
-                        .unpack()
+                        .call(index($config.of("new-config"), $count.of(42)))
+                        .get()
 
                     expect(newTestA).toEqual({
                         config: "new-config",
@@ -194,41 +194,41 @@ describe("trademarks", () => {
             })
 
             $main
-                .buy(
+                .call(
                     index(
                         $config.of("initial-config"),
                         $name.of("initial-name"),
                         $count.of(1)
                     )
                 )
-                .unpack()
+                .get()
         })
     })
 
     describe("Factory memoization", () => {
-        it("should create separate memoization contexts for different buy contexts", () => {
+        it("should create separate memoization contexts for different call contexts", () => {
             const factorySpy = vi.fn().mockReturnValue("resource")
-            const $resource = tm("resource").service({
+            const $resource = service("resource").module({
                 factory: factorySpy
             })
 
-            expect($resource.buy({}).unpack()).toBe("resource")
+            expect($resource.call({}).get()).toBe("resource")
             expect(factorySpy).toHaveBeenCalledTimes(1)
 
-            // The memoization works within the same assembly context
-            // Each call to assemble() creates a new context, so the factory is called again
-            expect($resource.buy({}).unpack()).toBe("resource")
+            // The memoization works within the same call context
+            // Each call() creates a new context, so the factory is called again
+            expect($resource.call({}).get()).toBe("resource")
             // Factory is called again for the new assembly context
             expect(factorySpy).toHaveBeenCalledTimes(2)
         })
 
-        it("should memoize factory calls when accessed multiple times within the same buy context", () => {
+        it("should memoize factory calls when accessed multiple times within the same call context", () => {
             const factorySpy = vi.fn().mockReturnValue("memoized")
-            const $spy = tm("spy").service({
+            const $spy = service("spy").module({
                 factory: factorySpy
             })
 
-            const $test = tm("test").service({
+            const $test = service("test").module({
                 required: [$spy],
                 factory: (deps) => {
                     const spyAccess = deps.spy
@@ -238,25 +238,25 @@ describe("trademarks", () => {
                 }
             })
 
-            $test.buy({}).unpack()
+            $test.call({}).get()
             // Factory should only be called once due to memoization within the same assembly context
             expect(factorySpy).toHaveBeenCalledTimes(1)
         })
 
         it("should keep memoization even if multiple dependents are nested", () => {
             const factory1Spy = vi.fn().mockReturnValue("A")
-            const $A = tm("A").service({
+            const $A = service("A").module({
                 factory: factory1Spy
             })
 
-            const $B = tm("B").service({
+            const $B = service("B").module({
                 required: [$A],
                 factory: ({ A }) => {
                     return "B"
                 }
             })
 
-            const $test = tm("test").service({
+            const $test = service("test").module({
                 required: [$A, $B],
                 factory: ({ A, B }) => {
                     return {
@@ -266,7 +266,7 @@ describe("trademarks", () => {
                 }
             })
 
-            expect($test.buy({}).unpack()).toEqual({
+            expect($test.call({}).get()).toEqual({
                 A: "A",
                 B: "B"
             })
@@ -275,30 +275,30 @@ describe("trademarks", () => {
             expect(factory1Spy).toHaveBeenCalledTimes(1)
         })
 
-        it("should rerun if dependent services have changed through ctx switching", async () => {
-            // A will be reassembled
-            const $A = tm("A").service({
+        it("should be recalled if dependent modules have changed through ctx switching", async () => {
+            // A will be recalled
+            const $A = service("A").module({
                 factory: () => Date.now()
             })
 
-            // B will be reassembled when A reassembles
-            const $B = tm("B").service({
+            // B will be recalled when A is recalled
+            const $B = service("B").module({
                 required: [$A],
                 factory: () => Date.now()
             })
 
-            // C - doesn't depend on anything, so it will not be reassembled
-            const $C = tm("C").service({
+            // C - doesn't depend on anything, so it will not be recalled
+            const $C = service("C").module({
                 factory: () => Date.now()
             })
 
-            // D will be reassembled when B reassembles
-            const $D = tm("D").service({
+            // D will be recalled when B is recalled
+            const $D = service("D").module({
                 required: [$B],
                 factory: () => Date.now()
             })
 
-            const $E = tm("E").service({
+            const $E = service("E").module({
                 required: [$A, $B, $C, $D],
                 factory: ({ A, B, C, D }) => {
                     return {
@@ -310,16 +310,16 @@ describe("trademarks", () => {
                 }
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$E],
                 factory: async ({ E }, ctx) => {
                     await sleep(100)
 
-                    // Override A - this should trigger resupply of B and D
+                    // Override A - this should trigger recall of B and D
                     // but C should remain cached
                     const newE = ctx($E)
-                        .buy(index($A.of(Date.now())))
-                        .unpack()
+                        .call(index($A.of(Date.now())))
+                        .get()
 
                     expect(newE.A).not.toBe(E.A)
                     expect(newE.B).not.toBe(E.B)
@@ -328,19 +328,19 @@ describe("trademarks", () => {
                 }
             })
 
-            await $main.buy({}).unpack()
+            await $main.call({}).get()
         })
     })
 
     describe("Automatic lifecycle management", () => {
-        it("should preserve referential identity for services without spec dependencies when provisioning main", () => {
-            const $session = tm("session").spec<{ userId: string }>()
+        it("should preserve referential identity for modules without spec dependencies when provisioning main", () => {
+            const $session = service("session").spec<{ userId: string }>()
 
-            const $db = tm("db").service({
+            const $db = service("db").module({
                 factory: () => ({ connection: Symbol("db") })
             })
 
-            const $currentUser = tm("currentUser").service({
+            const $currentUser = service("currentUser").module({
                 required: [$db, $session],
                 factory: ({ db, session }) => ({
                     db,
@@ -348,8 +348,8 @@ describe("trademarks", () => {
                 })
             })
 
-            const $main = tm("main")
-                .service({
+            const $main = service("main")
+                .module({
                     required: [$db, $currentUser],
                     factory: ({ db, currentUser }) => ({
                         db,
@@ -359,12 +359,12 @@ describe("trademarks", () => {
                 .provision()
 
             const first = $main
-                .buy(index($session.of({ userId: "user-a" })))
-                .unpack()
+                .call(index($session.of({ userId: "user-a" })))
+                .get()
 
             const second = $main
-                .buy(index($session.of({ userId: "user-b" })))
-                .unpack()
+                .call(index($session.of({ userId: "user-b" })))
+                .get()
 
             expect(first.db).toBe(second.db)
             expect(first.currentUser).not.toBe(second.currentUser)
@@ -374,25 +374,25 @@ describe("trademarks", () => {
         })
     })
     describe("Eager warmup behavior", () => {
-        it("should warmup app services", async () => {
+        it("should warmup modules", async () => {
             const eagerFactorySpy = vi.fn().mockReturnValue("eager")
             const lazyProductSpy = vi.fn().mockReturnValue("lazy")
             const warmProductSpy = vi.fn().mockReturnValue("warm")
 
-            const $eager = tm("eager").service({
+            const $eager = service("eager").module({
                 factory: eagerFactorySpy
             })
 
-            const $lazy = tm("lazy").service({
+            const $lazy = service("lazy").module({
                 factory: () => once(lazyProductSpy)
             })
 
-            const $warm = tm("warm").service({
+            const $warm = service("warm").module({
                 factory: () => once(warmProductSpy),
                 warmup: (lazyProduct) => lazyProduct()
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$eager, $lazy, $warm],
                 factory: () => {
                     // Don't access any dependencies yet
@@ -400,7 +400,7 @@ describe("trademarks", () => {
                 }
             })
 
-            const main = $main.buy({}).unpack()
+            const main = $main.call({}).get()
 
             await sleep(10)
 
@@ -418,16 +418,16 @@ describe("trademarks", () => {
                 throw new Error()
             })
 
-            const $error = tm("error").service({
+            const $error = service("error").module({
                 factory: errorFactorySpy
             })
 
-            const $errorWarm = tm("errorWarm").service({
+            const $errorWarm = service("errorWarm").module({
                 factory: () => once(errorWarmProductSpy),
                 warmup: (errorWarmProduct) => errorWarmProduct()
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$error, $errorWarm],
                 factory: () => {
                     // This should not throw error, as error products are not accessed by the factory
@@ -438,7 +438,7 @@ describe("trademarks", () => {
                 }
             })
 
-            const main = $main.buy({}).unpack()
+            const main = $main.call({}).get()
 
             await sleep(10)
 
@@ -447,17 +447,17 @@ describe("trademarks", () => {
             expect(errorWarmProductSpy).toHaveBeenCalledTimes(1)
         })
 
-        it("should still throw error when unpacking a failed warmed up service", async () => {
+        it("should still throw error when getting a failed warmed up module", async () => {
             const errorWarmProductSpy = vi.fn().mockImplementation(() => {
                 throw new Error()
             })
 
-            const $error = tm("error").service({
+            const $error = service("error").module({
                 factory: () => once(errorWarmProductSpy),
                 warmup: (errorWarmProduct) => errorWarmProduct()
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$error],
                 factory: ({ error }) => {
                     return "main"
@@ -467,30 +467,30 @@ describe("trademarks", () => {
             await sleep(10)
 
             // Accessing the product should still throw the error
-            expect(() => $main.buy({}).unpack()).toThrow()
+            expect(() => $main.call({}).get()).toThrow()
         })
 
         it("should work with complex dependency chains and selective initing", async () => {
             const ASpy = vi.fn().mockReturnValue("A")
             const BSpy = vi.fn().mockReturnValue("B")
 
-            const $A = tm("A").service({
+            const $A = service("A").module({
                 factory: () => once(ASpy),
                 warmup: (product) => product()
             })
 
-            const $B = tm("B").service({
+            const $B = service("B").module({
                 factory: () => once(BSpy)
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$A, $B],
                 factory: () => {
                     return "main"
                 }
             })
 
-            const main = $main.buy({}).unpack()
+            const main = $main.call({}).get()
 
             await sleep(10)
 
@@ -501,13 +501,13 @@ describe("trademarks", () => {
     })
 
     describe("Type Safety and Edge Cases", () => {
-        it("should handle empty services correctly", () => {
-            const $empty = tm("empty").service({
+        it("should handle empty modules correctly", () => {
+            const $empty = service("empty").module({
                 factory: () => "empty"
             })
 
-            const emptySupply = $empty.buy({})
-            expect(emptySupply.unpack()).toBe("empty")
+            const emptySupply = $empty.call({})
+            expect(emptySupply.get()).toBe("empty")
         })
     })
 })

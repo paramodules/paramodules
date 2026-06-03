@@ -1,18 +1,18 @@
 import { describe, it, expectTypeOf } from "vitest"
-import { tm } from "#index"
-import type { DuplicateDependencyError } from "#types/guards"
+import { service } from "#index"
+import type { DuplicateServiceError } from "#types/guards"
 
 describe("Duplicate Guard", () => {
     it("returns DuplicateDependencyError type for duplicate services", () => {
-        const $dep = tm("dep").service({
+        const $dep = service("dep").module({
             factory: () => "dep"
         })
 
-        const $withDuplicate = tm("withDuplicate").service({
+        const $withDuplicate = service("withDuplicate").module({
             required: [$dep, $dep],
             factory: () => "main"
         })
 
-        expectTypeOf($withDuplicate).toExtend<DuplicateDependencyError>()
+        expectTypeOf($withDuplicate).toExtend<DuplicateServiceError>()
     })
 })

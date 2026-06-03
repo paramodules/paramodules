@@ -1,64 +1,64 @@
 import { describe, it, expect } from "vitest"
-import { tm } from "#index"
+import { service } from "#index"
 
 describe("Runtime Validation", () => {
     describe("spec()", () => {
-        it("should create specs and allow packing values", () => {
-            const $value = tm("value").spec<string>()
-            const packed = $value.of("test")
+        it("should create specs and allow specifying values", () => {
+            const $value = service("value").spec<string>()
+            const supplier = $value.of("test")
 
-            expect($value.name).toBe("value")
-            expect(packed.unpack()).toBe("test")
+            expect($value.tm).toBe("value")
+            expect(supplier.get()).toBe("test")
         })
 
-        it("should enforce runtime service plan validation", () => {
-            expect(() => tm("test").service({} as any)).toThrow(TypeError)
-            expect(() => tm("test").service({} as any)).toThrow(
+        it("should enforce runtime module plan validation", () => {
+            expect(() => service("test").module({} as any)).toThrow(TypeError)
+            expect(() => service("test").module({} as any)).toThrow(
                 "test must have a 'factory' property"
             )
         })
     })
 
-    describe("service()", () => {
+    describe("module()", () => {
         it("should throw TypeError when plan is not an object", () => {
-            expect(() => tm("A").service(null as any)).toThrow(TypeError)
-            expect(() => tm("B").service(null as any)).toThrow(
+            expect(() => service("A").module(null as any)).toThrow(TypeError)
+            expect(() => service("B").module(null as any)).toThrow(
                 "B must be an object, got null"
             )
         })
 
         it("should throw TypeError when plan is an array", () => {
-            expect(() => tm("A").service([] as any)).toThrow(TypeError)
-            expect(() => tm("B").service([] as any)).toThrow(
+            expect(() => service("A").module([] as any)).toThrow(TypeError)
+            expect(() => service("B").module([] as any)).toThrow(
                 "B must be an object, not an array"
             )
         })
 
         it("should throw TypeError when factory is missing", () => {
-            expect(() => tm("A").service({} as any)).toThrow(TypeError)
-            expect(() => tm("B").service({} as any)).toThrow(
+            expect(() => service("A").module({} as any)).toThrow(TypeError)
+            expect(() => service("B").module({} as any)).toThrow(
                 "B must have a 'factory' property"
             )
         })
 
         it("should throw TypeError when factory is not a function", () => {
             expect(() =>
-                tm("A").service({ factory: "not a function" } as any)
+                service("A").module({ factory: "not a function" } as any)
             ).toThrow(TypeError)
             expect(() =>
-                tm("B").service({ factory: "not a function" } as any)
+                service("B").module({ factory: "not a function" } as any)
             ).toThrow("B must be a function, got string")
         })
 
         it("should throw TypeError when required is not an array", () => {
             expect(() =>
-                tm("A").service({
+                service("A").module({
                     factory: () => ({}),
                     required: "not an array"
                 } as any)
             ).toThrow(TypeError)
             expect(() =>
-                tm("B").service({
+                service("B").module({
                     factory: () => ({}),
                     required: "not an array"
                 } as any)
@@ -66,48 +66,48 @@ describe("Runtime Validation", () => {
         })
     })
 
-    describe("service.buy()", () => {
+    describe("module.call()", () => {
         it("should throw TypeError when specified is not an object", () => {
-            const $resource = tm("resource").service({
+            const $resource = service("resource").module({
                 factory: () => ({})
             })
-            expect(() => $resource.buy(null as any)).toThrow(TypeError)
-            expect(() => $resource.buy(null as any)).toThrow(
+            expect(() => $resource.call(null as any)).toThrow(TypeError)
+            expect(() => $resource.call(null as any)).toThrow(
                 "specified must be an object, got null"
             )
         })
 
         it("should throw TypeError when specified is an array", () => {
-            const $resource = tm("resource").service({
+            const $resource = service("resource").module({
                 factory: () => ({})
             })
-            expect(() => $resource.buy([] as any)).toThrow(TypeError)
-            expect(() => $resource.buy([] as any)).toThrow(
+            expect(() => $resource.call([] as any)).toThrow(TypeError)
+            expect(() => $resource.call([] as any)).toThrow(
                 "specified must be an object, not an array"
             )
         })
     })
 
-    describe("service.hire()", () => {
+    describe("module.hire()", () => {
         it("should throw TypeError when hired contain invalid items", () => {
-            const $resource = tm("resource").service({
+            const $resource = service("resource").module({
                 factory: () => ({})
             })
             expect(() => $resource.hire(null as any)).toThrow(TypeError)
             expect(() => $resource.hire(null as any)).toThrow(TypeError)
         })
 
-        it("should throw TypeError when service is missing name property", () => {
-            const $resource = tm("resource").service({
+        it("should throw TypeError when module is missing tm property", () => {
+            const $resource = service("resource").module({
                 factory: () => ({})
             })
             expect(() => $resource.hire({} as any)).toThrow(TypeError)
         })
     })
 
-    describe("service.mock()", () => {
+    describe("module.mock()", () => {
         it("should throw TypeError when plan is not an object", () => {
-            const $resource = tm("resource").service({
+            const $resource = service("resource").module({
                 factory: () => ({})
             })
             expect(() => $resource.mock(null as any)).toThrow(TypeError)
@@ -117,7 +117,7 @@ describe("Runtime Validation", () => {
         })
 
         it("should throw TypeError when factory is missing", () => {
-            const $resource = tm("resource").service({
+            const $resource = service("resource").module({
                 factory: () => ({})
             })
             expect(() => $resource.mock({} as any)).toThrow(TypeError)

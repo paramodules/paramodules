@@ -1,8 +1,8 @@
 import type {
-    ServiceSupply,
-    UnknownTM,
-    Supply,
-    UnknownService
+    ModuleSupplier,
+    UnknownService,
+    Supplier,
+    UnknownModule
 } from "#types/public"
 
 /**
@@ -37,26 +37,28 @@ export function once<F extends (...args: any[]) => any>(func: F): F {
     } as F
 }
 
-export function dedupe(services: UnknownTM[]) {
-    const deduped: Record<string, UnknownTM> = {}
+export function dedupe(services: UnknownService[]) {
+    const deduped: Record<string, UnknownService> = {}
     for (const service of services) {
-        deduped[service.name] = service
+        deduped[service.tm] = service
     }
     return Object.values(deduped)
 }
 
 /**
- * Transforms an array of supplies into a map keyed by service names.
- * This provides type-safe access to assembled supplies by their service names.
+ * Transforms an array of suppliers into a map keyed by service trademarks.
+ * This provides type-safe access to suppliers by their service trademarks.
  *
- * @typeParam LIST - An array type where each element has a `service` property with a `name`
- * @param list - Array of supplies to index
- * @returns A map where keys are service names and values are the supplies
+ * @typeParam LIST - An array type where each element has a `service` property with a `tm`
+ * @param list - Array of suppliers to index
+ * @returns A map where keys are service trademarks and values are their suppliers
  * @public
  */
-export function index<LIST extends { tm: { name: string } }[]>(...list: LIST) {
+export function index<LIST extends { service: { tm: string } }[]>(
+    ...list: LIST
+) {
     return list.reduce(
-        (acc, r) => ({ ...acc, [r.tm.name]: r }),
+        (acc, r) => ({ ...acc, [r.service.tm]: r }),
         {}
     ) as MapFromList<LIST>
 }
@@ -69,12 +71,12 @@ export function index<LIST extends { tm: { name: string } }[]>(...list: LIST) {
  * @returns A map type where each key is a name from the list and values are the corresponding objects
  * @public
  */
-export type MapFromList<LIST extends { tm: { name: string } }[]> =
+export type MapFromList<LIST extends { service: { tm: string } }[]> =
     LIST extends [] ? Record<string, never>
     :   UnionToIntersection<
             {
                 [K in keyof LIST]: {
-                    [NAME in LIST[K]["tm"]["name"]]: LIST[K]
+                    [NAME in LIST[K]["service"]["tm"]]: LIST[K]
                 }
             }[number]
         >
@@ -89,25 +91,25 @@ export function sleep(ms: number) {
 }
 
 /**
- * Type guard to check if a service is an app service.
+ * Type guard to check if a service is amodule.
  * @param service - The service to check
  * @returns True if the service is an app service, false if it's a request service
  * @internal
  */
-export function isService<SERVICE extends UnknownService>(
-    service: SERVICE | UnknownTM
-): service is SERVICE {
-    return "_service" in service && service._service === true
+export function isModule<MODULE extends UnknownModule>(
+    service: MODULE | UnknownService
+): service is MODULE {
+    return "_module" in service && service._module === true
 }
 
-export function isServiceSupply<SUPPLY extends Supply<UnknownTM>>(
-    supply: SUPPLY
-): supply is Extract<SUPPLY, ServiceSupply<UnknownService>> {
-    return isService(supply.tm)
+export function isModuleSupplier<SUPPLIER extends Supplier<UnknownService>>(
+    supplier: SUPPLIER
+): supplier is Extract<SUPPLIER, ModuleSupplier<UnknownModule>> {
+    return isModule(supplier.service)
 }
 
-export function isFromFactory(supply: Supply<UnknownTM>) {
-    return "_fromFactory" in supply && supply._fromFactory === true
+export function isSpecified(supplier: Supplier<UnknownService>) {
+    return "_specified" in supplier && supplier._specified === true
 }
 
 /**

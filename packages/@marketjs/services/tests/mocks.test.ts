@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, expectTypeOf } from "vitest"
-import { index, tm } from "#index"
+import { index, service } from "#index"
 import { sleep, once } from "#utils"
-import type {
-    CircularDependencyError,
-    DuplicateDependencyError
-} from "#types/guards"
-import type { Supply } from "#types/public"
+import type { CircularModuleError, DuplicateServiceError } from "#types/guards"
+import type { Supplier } from "#types/public"
 
 describe("Mocks Feature", () => {
     describe("Mock Method", () => {
         it("should handle mock with less services", () => {
-            const $input = tm("input").spec<boolean>()
+            const $input = service("input").spec<boolean>()
 
-            const $base = tm("base").service({
+            const $base = service("base").module({
                 required: [$input],
                 factory: ({ input }) => ({ base: input })
             })
@@ -22,14 +19,14 @@ describe("Mocks Feature", () => {
                 factory: () => ({ base: true, enhanced: true })
             })
 
-            const result = $mocked.buy({}).unpack()
+            const result = $mocked.call({}).get()
 
             expect(result.base).toBe(true)
             expect(result.enhanced).toBe(true)
         })
 
-        it("should not allow mocks in services array", () => {
-            const $base = tm("mock").service({
+        it("should not allow mocks in required array", () => {
+            const $base = service("mock").module({
                 factory: () => "base"
             })
 
@@ -39,7 +36,7 @@ describe("Mocks Feature", () => {
             })
 
             expect(() => {
-                const $next = tm("next").service({
+                const $next = service("next").module({
                     factory: () => "next",
                     //@ts-expect-error - mock in services array
                     required: [$mock]
@@ -51,7 +48,7 @@ describe("Mocks Feature", () => {
             const lazyProductSpy = vi.fn().mockReturnValue("lazy")
             const warmProductSpy = vi.fn().mockReturnValue("warm")
 
-            const $lazy = tm("lazy").service({
+            const $lazy = service("lazy").module({
                 factory: () => once(lazyProductSpy)
             })
 
@@ -60,13 +57,13 @@ describe("Mocks Feature", () => {
                 warmup: (warmProduct) => warmProduct()
             })
 
-            const $test = tm("test").service({
+            const $test = service("test").module({
                 required: [$lazy],
                 factory: ({ lazy }) => lazy
             })
 
-            $test.hire($warmMock).buy({})
-            $test.buy({})
+            $test.hire($warmMock).call({})
+            $test.call({})
 
             await sleep(10)
 
@@ -75,15 +72,15 @@ describe("Mocks Feature", () => {
         })
 
         it("should compute precise TOSPECIFIY types with mock", () => {
-            const $config = tm("config").spec<string>()
-            const $apiKey = tm("apiKey").spec<string>()
+            const $config = service("config").spec<string>()
+            const $apiKey = service("apiKey").spec<string>()
 
-            const $logger = tm("logger").service({
+            const $logger = service("logger").module({
                 factory: () => "logger"
             })
 
             // Base service - return compatible type that can be extended
-            const $base = tm("base").service({
+            const $base = service("base").module({
                 factory: () => "base"
             })
 
@@ -93,33 +90,33 @@ describe("Mocks Feature", () => {
                 factory: () => "proto"
             })
 
-            $mocked.buy(
-                //@ts-expect-error - missing $apiKey type supply
+            $mocked.call(
+                //@ts-expect-error - missing $apiKey
                 index($config.of("test"))
             )
 
-            $mocked.buy(
-                //@ts-expect-error - missing $config type supply
+            $mocked.call(
+                //@ts-expect-error - missing $config
                 index($apiKey.of("secret-key"))
             )
 
             // The type system should now know exactly what needs to be supplied:
             // - config and apiKey (request supplies must be provided)
             // - logger should NOT need to be provided (it's an app service)
-            const supply = $mocked.buy(
+            const supplier = $mocked.call(
                 index($config.of("test"), $apiKey.of("secret-key"))
             )
 
-            const output = supply.unpack()
+            const output = supplier.get()
             expect(output).toBe("proto")
         })
 
         it("should detect circular dependencies in mocks", () => {
-            const $A = tm("A").service({
+            const $A = service("A").module({
                 factory: () => "serviceA"
             })
 
-            const $B = tm("B").service({
+            const $B = service("B").module({
                 required: [$A],
                 factory: ({ A }) => "serviceB uses " + A
             })
@@ -132,26 +129,26 @@ describe("Mocks Feature", () => {
                     factory: ({ B }) => "mockA uses " + B
                 })
 
-                expectTypeOf($mockA).toExtend<CircularDependencyError>()
+                expectTypeOf($mockA).toExtend<CircularModuleError>()
             }).toThrow("Circular dependency detected")
         })
     })
 
     describe("Hire Method", () => {
-        it("should allow hiring alternative services for testing", () => {
-            const $db = tm("db").service({
+        it("should allow hiring alternative modules for testing", () => {
+            const $db = service("db").module({
                 factory: () => "real-db"
             })
 
-            const $cache = tm("cache").service({
+            const $cache = service("cache").module({
                 factory: () => "real-cache"
             })
 
-            const $logger = tm("logger").service({
+            const $logger = service("logger").module({
                 factory: () => "real-logger"
             })
 
-            const $service = tm("service").service({
+            const $module = service("module").module({
                 required: [$db, $cache, $logger],
                 factory: ({ db, cache, logger }) => ({
                     db,
@@ -171,25 +168,25 @@ describe("Mocks Feature", () => {
                 required: []
             })
 
-            const $hired = $service.hire($mockDb, $mockCache)
-            const test = $hired.buy({}).unpack()
+            const $hired = $module.hire($mockDb, $mockCache)
+            const test = $hired.call({}).get()
 
             expect(test.db).toBe("mock-db")
             expect(test.cache).toBe("mock-cache")
             expect(test.logger).toBe("real-logger")
         })
 
-        it("should handle hiring unused services", () => {
-            const $db = tm("db").service({
+        it("should handle hiring unused modules", () => {
+            const $db = service("db").module({
                 factory: () => "db"
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$db],
                 factory: ({ db }) => "main-" + db
             })
 
-            const $unused = tm("unused").service({
+            const $unused = service("unused").module({
                 factory: () => "base-extra"
             })
 
@@ -199,30 +196,30 @@ describe("Mocks Feature", () => {
             })
 
             const $hired = $main.hire($unusedMock)
-            const test = $hired.buy({}).unpack()
+            const test = $hired.call({}).get()
 
             // The extra service is added to the services list, but not to the result
             expect(test).toEqual("main-db")
         })
 
         it("should handle empty hire calls gracefully", () => {
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 factory: () => "main"
             })
 
             // Hire with no services - should work fine
             const $hired = $main.hire()
-            const test = $hired.buy({}).unpack()
+            const test = $hired.call({}).get()
 
             expect(test).toBe("main")
         })
 
         it("should error on duplicate service names in hire", () => {
-            const $db = tm("db").service({
+            const $db = service("db").module({
                 factory: () => "db"
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$db],
                 factory: ({ db }) => "main-" + db
             })
@@ -239,48 +236,48 @@ describe("Mocks Feature", () => {
 
             const $hired = $main.hire($mockDb1, $mockDb2)
 
-            expectTypeOf($hired).toExtend<DuplicateDependencyError>()
+            expectTypeOf($hired).toExtend<DuplicateServiceError>()
         })
 
-        it("should allow hire multiple services together", () => {
-            const $shared = tm("shared").spec<string>()
-            const $unique = tm("unique").spec<number>()
+        it("should allow hire multiple modules together", () => {
+            const $shared = service("shared").spec<string>()
+            const $unique = service("unique").spec<number>()
 
-            const $A = tm("A").service({
+            const $A = service("A").module({
                 required: [$shared],
                 factory: ({ shared }) => {
                     return "A-" + shared
                 }
             })
 
-            const $B = tm("B").service({
+            const $B = service("B").module({
                 required: [$shared, $unique],
                 factory: ({ shared, unique }) => {
                     return "B-" + shared + "-" + unique
                 }
             })
 
-            const supply = $A
+            const supplier = $A
                 .hire($B)
-                .buy(index($shared.of("shared-data"), $unique.of(123)))
+                .call(index($shared.of("shared-data"), $unique.of(123)))
 
-            expect(supply.unpack()).toEqual("A-shared-data")
-            const BResult = supply.deps[$B.name]
+            expect(supplier.get()).toEqual("A-shared-data")
+            const BResult = supplier.supplies[$B.tm]
             expect(BResult).toEqual("B-shared-data-123")
         })
 
         it("should type check that all required specs are provided", () => {
-            const $db = tm("db").spec<string>()
-            const $cache = tm("cache").spec<string>()
+            const $db = service("db").spec<string>()
+            const $cache = service("cache").spec<string>()
 
-            const $user = tm("user").service({
+            const $user = service("user").module({
                 required: [$db],
                 factory: ({ db }) => {
                     return "user-" + db
                 }
             })
 
-            const $session = tm("session").service({
+            const $session = service("session").module({
                 required: [$cache],
                 factory: ({ cache }) => {
                     return "session-" + cache
@@ -293,62 +290,62 @@ describe("Mocks Feature", () => {
             const cache = $cache.of("redis://localhost:6379")
 
             // @ts-expect-error - cache is missing
-            const errorSupply = $combined.buy(index(db))
+            const errorSupply = $combined.call(index(db))
 
-            const combinedSupply = $combined.buy(index(db, cache))
+            const combinedSupply = $combined.call(index(db, cache))
 
-            expect(combinedSupply.unpack()).toEqual(
+            expect(combinedSupply.get()).toEqual(
                 "user-postgresql://localhost:5432/db"
             )
 
-            const sessionResult = combinedSupply.deps[$session.name]
+            const sessionResult = combinedSupply.supplies[$session.tm]
             expect(sessionResult).toEqual("session-redis://localhost:6379")
         })
 
         it("should handle errors in hire() method gracefully", () => {
-            const $working = tm("working").service({
+            const $working = service("working").module({
                 factory: () => "working-value"
             })
 
-            const $failing = tm("failing").service({
+            const $failing = service("failing").module({
                 factory: () => {
                     throw new Error("Service failed")
                     return
                 }
             })
 
-            const supply = $working.hire($failing).buy({})
-            expect(supply.unpack()).toBe("working-value")
+            const supplier = $working.hire($failing).call({})
+            expect(supplier.get()).toBe("working-value")
             expect(() => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                supply.deps[$failing.name]
+                supplier.supplies[$failing.tm]
             }).toThrow("Service failed")
         })
     })
 
     describe("Accessing supplies after ctx.hire() call", () => {
         it(".supplies should contain the hired services' supplies properly typed", () => {
-            const $service = tm("service").service({
+            const $service = service("service").module({
                 factory: () => "service-value"
             })
 
-            const $contextual = tm("contextual").service({
+            const $contextual = service("contextual").module({
                 factory: () => "contextual-value"
             })
 
-            const $main = tm("main").service({
+            const $main = service("main").module({
                 required: [$service],
                 factory: (deps, ctx) => {
-                    const supply = ctx($service).hire($contextual).buy({})
+                    const supplier = ctx($service).hire($contextual).call({})
 
-                    const contextualSupply = supply.market[$contextual.name]
+                    const contextualSupply = supplier.market[$contextual.tm]
                     expectTypeOf(contextualSupply).not.toEqualTypeOf<any>()
-                    expectTypeOf(contextualSupply).toExtend<Supply<any>>()
-                    expect(contextualSupply.unpack()).toBe("contextual-value")
+                    expectTypeOf(contextualSupply).toExtend<Supplier<any>>()
+                    expect(contextualSupply.get()).toBe("contextual-value")
                 }
             })
 
-            $main.buy({})
+            $main.call({})
         })
     })
 })

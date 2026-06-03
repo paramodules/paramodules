@@ -4,7 +4,7 @@
  * @internal
  */
 
-import type { Spec, UnknownService, UnknownTM } from "#types/public"
+import type { Spec, UnknownModule, UnknownService } from "#types/public"
 
 /**
  * Validates that a value is a string.
@@ -23,24 +23,24 @@ export function assertString(
 }
 
 /**
- * Validates that a value is a valid JavaScript identifier name
+ * Validates that a value is a valid trademark name
  * (suitable for use as a variable name or object property name).
  * @param value - The value to validate
  * @internal
- * @throws TypeError if the value is not a valid identifier
+ * @throws TypeError if the value is not a valid trademark identifier
  */
-export function assertName(value: string) {
+export function assertTM(value: string) {
     // JavaScript identifier must start with letter, underscore, or dollar sign
     // and can contain letters, digits, underscores, and dollar signs
     const identifierPattern = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/
 
     if (value === "") {
-        throw new TypeError(`name must not be empty`)
+        throw new TypeError(`TM must not be empty`)
     }
 
     if (!identifierPattern.test(value)) {
         throw new TypeError(
-            `${value} contains invalid characters for a JavaScript identifier, or doesn't start with a letter, underscore, or dollar sign`
+            `${value} trademark contains invalid characters for a JavaScript identifier, or doesn't start with a letter, underscore, or dollar sign`
         )
     }
 }
@@ -100,7 +100,7 @@ export function assertFunction(
  * @internal
  * @throws TypeError if the plan is invalid
  */
-export function assertServicePlan(
+export function assertModulePlan(
     name: string,
     plan: {
         required?: unknown
@@ -119,13 +119,12 @@ export function assertServicePlan(
     const required = plan.required ?? []
     const optionals = plan.optionals ?? []
 
-    assertTMs(name, required)
+    assertServices(name, required)
     assertSpecs(name, optionals)
 
     if (plan.warmup !== undefined) {
         assertFunction(name, plan.warmup)
     }
-
 }
 
 /**
@@ -143,61 +142,61 @@ export function assertSpecOptions(
     assertPlainObject(name, opts)
 }
 
-export function assertSpec(tm: unknown): asserts tm is Spec {
-    assertHasProperty("noname", tm, "name")
-    assertString("noname", tm.name)
+export function assertSpec(service: unknown): asserts service is Spec {
+    assertHasProperty("noname", service, "tm")
+    assertString("noname", service.tm)
 
-    assertHasProperty(tm.name, tm, "_spec")
-    if (!tm._spec) {
-        throw new TypeError(`${tm.name} is not a spec`)
+    assertHasProperty(service.tm, service, "_spec")
+    if (!service._spec) {
+        throw new TypeError(`${service.tm} is not a spec`)
     }
 }
 
-export function assertService(
-    tm: unknown,
+export function assertModule(
+    service: unknown,
     allowMocks: boolean = false
-): asserts tm is UnknownService {
-    assertHasProperty("noname", tm, "name")
-    assertString("noname", tm.name)
-    assertHasProperty(tm.name, tm, "_service")
-    assertHasProperty(tm.name, tm, "_mock")
+): asserts service is UnknownModule {
+    assertHasProperty("noname", service, "tm")
+    assertString("noname", service.tm)
+    assertHasProperty(service.tm, service, "_module")
+    assertHasProperty(service.tm, service, "_mock")
 
     if (
         !allowMocks &&
-        "_hired" in tm &&
-        Array.isArray(tm._hired) &&
-        tm._hired.length > 0
+        "_hired" in service &&
+        Array.isArray(service._hired) &&
+        service._hired.length > 0
     ) {
-        throw new TypeError(`Cannot depend on ${tm.name} service`)
+        throw new TypeError(`Cannot depend on ${service.tm} service`)
     }
 
-    if (!allowMocks && tm._mock) {
-        throw new TypeError(`Cannot depend on ${tm.name} mock service`)
+    if (!allowMocks && service._mock) {
+        throw new TypeError(`Cannot depend on ${service.tm} mock service`)
     }
 }
 
 /**
- * Validates that all items in an array are valid trademarks.
+ * Validates that all items in an array are valid services.
  * @param name - The parameter name for error messages
- * @param tms - The trademarks array to validate
+ * @param services - The services array to validate
  * @param allowMocks - Whether to allow mocks
  * @internal
  * @throws TypeError if any service is invalid
  */
-export function assertTMs(
+export function assertServices(
     name: string,
-    tms: unknown,
+    services: unknown,
     allowMocks: boolean = false
-): asserts tms is UnknownTM[] {
-    if (!Array.isArray(tms)) {
+): asserts services is UnknownService[] {
+    if (!Array.isArray(services)) {
         throw new TypeError(`${name} must be an array`)
     }
-    tms.forEach((tm) => {
+    services.forEach((tm) => {
         try {
             assertSpec(tm)
             return
         } catch (e) {
-            assertService(tm, allowMocks)
+            assertModule(tm, allowMocks)
         }
     })
 }
@@ -214,15 +213,15 @@ export function assertSpecs(
     })
 }
 
-export function assertServices(
+export function assertModules(
     name: string,
-    services: unknown,
+    modules: unknown,
     allowMocks: boolean = false
-): asserts services is UnknownService[] {
-    if (!Array.isArray(services)) {
+): asserts modules is UnknownModule[] {
+    if (!Array.isArray(modules)) {
         throw new TypeError(`${name} must be an array`)
     }
-    services.forEach((service) => {
-        assertService(service, allowMocks)
+    modules.forEach((service) => {
+        assertModule(service, allowMocks)
     })
 }
