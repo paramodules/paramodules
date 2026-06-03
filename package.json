@@ -1,5 +1,5 @@
 {
-    "name": "@marketjs/trademarks-monorepo",
+    "name": "@marketjs-monorepo",
     "private": true,
     "type": "module",
     "scripts": {
