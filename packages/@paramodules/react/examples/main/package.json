@@ -1,26 +1,26 @@
 {
-    "name": "@marketjs/react.example",
+    "name": "@paramodules/react.example",
     "version": "0.0.0",
     "type": "module",
     "private": false,
-    "description": "A comprehensive React example showcasing all @marketjs features with a social media wireframe",
+    "description": "A comprehensive React example showcasing all @paramodules features with a social media wireframe",
     "keywords": [
         "react",
-        "@marketjs/trademarks",
+        "@paramodules/core",
         "dependency-injection",
         "typescript",
         "vite",
         "example"
     ],
-    "author": "@marketjs",
+    "author": "@paramodules",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/market-js/trademarks.git"
+        "url": "https://github.com/paramodules/core.git"
     },
-    "homepage": "https://github.com/market-js/trademarks/tree/main/packages/@marketjs/react/examples/main#readme",
+    "homepage": "https://github.com/paramodules/core/tree/main/packages/@paramodules/react/examples/main#readme",
     "bugs": {
-        "url": "https://github.com/market-js/trademarks/issues"
+        "url": "https://github.com/paramodules/core/issues"
     },
     "scripts": {
         "dev": "fuser -k 3001/tcp || true; vite",
@@ -32,8 +32,8 @@
         "test:ui": "vitest --ui"
     },
     "dependencies": {
-        "@marketjs/react": "workspace:^",
-        "@marketjs/trademarks": "workspace:^",
+        "@paramodules/react": "workspace:^",
+        "paramodules": "workspace:^",
         "@tailwindcss/vite": "^4.1.18",
         "@tanstack/query-core": "^5.90.14",
         "@tanstack/react-query": "^5.90.14",

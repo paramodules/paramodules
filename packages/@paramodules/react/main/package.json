@@ -1,21 +1,21 @@
 {
-    "name": "@marketjs/react",
+    "name": "@paramodules/react",
     "type": "module",
     "version": "0.0.0",
-    "description": "Hooks to synchronize React client components with @marketjs/trademarks",
+    "description": "Hooks to synchronize React client components with paramodules",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
     "sideEffects": false,
-    "author": "@marketjs",
+    "author": "@paramodules",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/market-js/trademarks.git"
+        "url": "git+https://github.com/paramodules/core.git"
     },
-    "homepage": "https://github.com/market-js/trademarks/tree/main/packages/@marketjs/react/main#readme",
+    "homepage": "https://github.com/paramodules/core/tree/main/packages/@paramodules/react/main#readme",
     "bugs": {
-        "url": "https://github.com/market-js/trademarks/issues"
+        "url": "https://github.com/paramodules/core/issues"
     },
     "imports": {
         "#*": "./src/*.ts"
@@ -38,10 +38,10 @@
         "access": "public"
     },
     "devDependencies": {
-        "@marketjs/config.eslint": "*",
-        "@marketjs/config.typescript": "*",
+        "@paramodules/config.eslint": "*",
+        "@paramodules/config.typescript": "*",
         "@types/react": "^19.2.6",
-        "@marketjs/trademarks": "workspace:^",
+        "paramodules": "workspace:^",
         "typescript": "^6.0.2",
         "tsup": "^8.5.0",
         "turbo": "^2.5.5"
@@ -49,6 +49,6 @@
     "peerDependencies": {
         "react": "^19.2.3",
         "react-dom": "^19.2.3",
-        "@marketjs/trademarks": "workspace:^"
+        "paramodules": "workspace:^"
     }
 }

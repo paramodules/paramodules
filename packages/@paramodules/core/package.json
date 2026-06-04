@@ -7,11 +7,11 @@
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
     "sideEffects": false,
-    "author": "@marketjs",
+    "author": "@paramodules",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/market-js/trademarks.git"
+        "url": "git+https://github.com/paramodules/core.git"
     },
     "imports": {
         "#*": "./src/*.ts"
@@ -34,8 +34,8 @@
         "typecheck": "vitest run --typecheck.only"
     },
     "devDependencies": {
-        "@marketjs/config.eslint": "workspace:*",
-        "@marketjs/config.typescript": "workspace:*",
+        "@paramodules/config.eslint": "workspace:*",
+        "@paramodules/config.typescript": "workspace:*",
         "vitest": "^4.0.10",
         "@vitest/coverage-v8": "^4.0.10",
         "vite": "^8.0.0",

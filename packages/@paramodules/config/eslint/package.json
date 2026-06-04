@@ -1,5 +1,5 @@
 {
-    "name": "@marketjs/config.eslint",
+    "name": "@paramodules/config.eslint",
     "version": "0.1.0",
     "type": "module",
     "exports": {

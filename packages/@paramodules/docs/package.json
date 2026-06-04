@@ -1,5 +1,5 @@
 {
-    "name": "@marketjs/docs",
+    "name": "@paramodules/docs",
     "version": "0.0.0",
     "private": true,
     "scripts": {
