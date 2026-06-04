@@ -2,7 +2,7 @@ import type { UnknownModulePlan } from "#types/internal"
 import type {
     Supplier,
     UnknownService,
-    Spec,
+    Param,
     Module,
     UnknownModule
 } from "#types/public"
@@ -27,26 +27,41 @@ export type MarketRecord<SERVICE extends UnknownService = UnknownService> =
  * A generic map of supplies or undefined. Undefined used to force a supply not to be preserved across reassembly.
  * @public
  */
-export type LazyMarketOrUndefinedRecord<
+export type RegistryOrUndefinedRecord<
     SERVICE extends UnknownService = UnknownService
 > = Record<string, MaybeFn<[], Supplier<SERVICE>> | undefined>
 
-type ToSpecifyBase<
+type FindSupplyFirstAppearanceInServiceTuple<
+    SERVICES extends UnknownService[],
+    KEY extends "_reqType" | "_suppliesType",
+    NAME extends PropertyKey
+> =
+    SERVICES extends [infer Head, ...infer Tail] ?
+        Tail extends UnknownService[] ?
+            Head extends UnknownModule ?
+                NAME extends keyof Head[KEY] ?
+                    Head[KEY][NAME]
+                :   FindSupplyFirstAppearanceInServiceTuple<Tail, KEY, NAME>
+            :   FindSupplyFirstAppearanceInServiceTuple<Tail, KEY, NAME>
+        :   never
+    :   never
+
+type RequestBase<
     PLAN extends Pick<UnknownModulePlan, "optionals"> & {
         required: UnknownService[]
     }
 > = {
     [SERVICE in Extract<
         PLAN["required"][number],
-        Spec
+        Param
     > as SERVICE["tm"]]: Supplier<SERVICE>
 } & {
     [OPTIONAL in
         | PLAN["optionals"][number]
         | Exclude<
               PLAN["required"][number],
-              Spec
-          > as OPTIONAL["tm"]]?: OPTIONAL extends Spec ? Supplier<OPTIONAL>
+              Param
+          > as OPTIONAL["tm"]]?: OPTIONAL extends Param ? Supplier<OPTIONAL>
     : OPTIONAL extends UnknownModule ?
         Supplier<
             Module<
@@ -62,45 +77,25 @@ type ToSpecifyBase<
     :   never
 }
 
-type FindSupplyFirstAppearanceInServiceTuple<
-    SERVICES extends UnknownService[],
-    KEY extends "_toSpecifyType" | "_suppliesType",
-    NAME extends PropertyKey
-> =
-    SERVICES extends [infer Head, ...infer Tail] ?
-        Tail extends UnknownService[] ?
-            Head extends UnknownModule ?
-                NAME extends keyof Head[KEY] ?
-                    Head[KEY][NAME]
-                :   FindSupplyFirstAppearanceInServiceTuple<Tail, KEY, NAME>
-            :   FindSupplyFirstAppearanceInServiceTuple<Tail, KEY, NAME>
-        :   never
-    :   never
-
-export type ToSpecify<
+export type Request<
     PLAN extends Pick<UnknownModulePlan, "optionals"> & {
         required: UnknownService[]
     }
 > =
     any[] extends PLAN["required"] ? any
-    :   ToSpecifyBase<PLAN> & {
+    :   RequestBase<PLAN> & {
             [NAME in keyof UnionToIntersection<
-                Extract<
-                    PLAN["required"][number],
-                    UnknownModule
-                >["_toSpecifyType"]
-            > as NAME extends keyof ToSpecifyBase<PLAN> ? never
+                Extract<PLAN["required"][number], UnknownModule>["_reqType"]
+            > as NAME extends keyof RequestBase<PLAN> ? never
             :   NAME]: FindSupplyFirstAppearanceInServiceTuple<
                 PLAN["required"],
-                "_toSpecifyType",
+                "_reqType",
                 NAME
             >
         }
 
 export type Market<MODULE extends UnknownModule> = {
-    [NAME in keyof MODULE["_toSpecifyType"]]-?: NonNullable<
-        MODULE["_toSpecifyType"][NAME]
-    >
+    [NAME in keyof MODULE["_reqType"]]-?: NonNullable<MODULE["_reqType"][NAME]>
 }
 
 export type MarketPlan<
@@ -108,7 +103,7 @@ export type MarketPlan<
         required: UnknownService[]
     }
 > = {
-    [NAME in keyof ToSpecify<PLAN>]-?: NonNullable<ToSpecify<PLAN>[NAME]>
+    [NAME in keyof Request<PLAN>]-?: NonNullable<Request<PLAN>[NAME]>
 }
 
 type SuppliesBase<

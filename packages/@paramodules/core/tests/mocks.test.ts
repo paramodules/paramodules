@@ -7,11 +7,11 @@ import type { Supplier } from "#types/public"
 describe("Mocks Feature", () => {
     describe("Mock Method", () => {
         it("should handle mock with less services", () => {
-            const $input = service("input").spec<boolean>()
+            const $param = service("param").param<boolean>()
 
             const $base = service("base").module({
-                required: [$input],
-                factory: ({ input }) => ({ base: input })
+                required: [$param],
+                factory: ({ param }) => ({ base: param })
             })
 
             const $mocked = $base.mock({
@@ -19,7 +19,7 @@ describe("Mocks Feature", () => {
                 factory: () => ({ base: true, enhanced: true })
             })
 
-            const result = $mocked.call({}).get()
+            const result = $mocked.request({}).get()
 
             expect(result.base).toBe(true)
             expect(result.enhanced).toBe(true)
@@ -62,8 +62,8 @@ describe("Mocks Feature", () => {
                 factory: ({ lazy }) => lazy
             })
 
-            $test.hire($warmMock).call({})
-            $test.call({})
+            $test.hire($warmMock).request({})
+            $test.request({})
 
             await sleep(10)
 
@@ -71,9 +71,9 @@ describe("Mocks Feature", () => {
             expect(warmProductSpy).toHaveBeenCalledTimes(1)
         })
 
-        it("should compute precise TOSPECIFIY types with mock", () => {
-            const $config = service("config").spec<string>()
-            const $apiKey = service("apiKey").spec<string>()
+        it("should compute precise REQUEST types with mock", () => {
+            const $config = service("config").param<string>()
+            const $apiKey = service("apiKey").param<string>()
 
             const $logger = service("logger").module({
                 factory: () => "logger"
@@ -90,20 +90,20 @@ describe("Mocks Feature", () => {
                 factory: () => "proto"
             })
 
-            $mocked.call(
+            $mocked.request(
                 //@ts-expect-error - missing $apiKey
                 index($config.of("test"))
             )
 
-            $mocked.call(
+            $mocked.request(
                 //@ts-expect-error - missing $config
                 index($apiKey.of("secret-key"))
             )
 
             // The type system should now know exactly what needs to be supplied:
             // - config and apiKey (request supplies must be provided)
-            // - logger should NOT need to be provided (it's an app service)
-            const supplier = $mocked.call(
+            // - logger should NOT need to be provided (it's a module service)
+            const supplier = $mocked.request(
                 index($config.of("test"), $apiKey.of("secret-key"))
             )
 
@@ -169,7 +169,7 @@ describe("Mocks Feature", () => {
             })
 
             const $hired = $module.hire($mockDb, $mockCache)
-            const test = $hired.call({}).get()
+            const test = $hired.request({}).get()
 
             expect(test.db).toBe("mock-db")
             expect(test.cache).toBe("mock-cache")
@@ -196,7 +196,7 @@ describe("Mocks Feature", () => {
             })
 
             const $hired = $main.hire($unusedMock)
-            const test = $hired.call({}).get()
+            const test = $hired.request({}).get()
 
             // The extra service is added to the services list, but not to the result
             expect(test).toEqual("main-db")
@@ -209,7 +209,7 @@ describe("Mocks Feature", () => {
 
             // Hire with no services - should work fine
             const $hired = $main.hire()
-            const test = $hired.call({}).get()
+            const test = $hired.request({}).get()
 
             expect(test).toBe("main")
         })
@@ -240,8 +240,8 @@ describe("Mocks Feature", () => {
         })
 
         it("should allow hire multiple modules together", () => {
-            const $shared = service("shared").spec<string>()
-            const $unique = service("unique").spec<number>()
+            const $shared = service("shared").param<string>()
+            const $unique = service("unique").param<number>()
 
             const $A = service("A").module({
                 required: [$shared],
@@ -259,16 +259,16 @@ describe("Mocks Feature", () => {
 
             const supplier = $A
                 .hire($B)
-                .call(index($shared.of("shared-data"), $unique.of(123)))
+                .request(index($shared.of("shared-data"), $unique.of(123)))
 
             expect(supplier.get()).toEqual("A-shared-data")
             const BResult = supplier.supplies[$B.tm]
             expect(BResult).toEqual("B-shared-data-123")
         })
 
-        it("should type check that all required specs are provided", () => {
-            const $db = service("db").spec<string>()
-            const $cache = service("cache").spec<string>()
+        it("should type check that all required params are provided", () => {
+            const $db = service("db").param<string>()
+            const $cache = service("cache").param<string>()
 
             const $user = service("user").module({
                 required: [$db],
@@ -290,9 +290,9 @@ describe("Mocks Feature", () => {
             const cache = $cache.of("redis://localhost:6379")
 
             // @ts-expect-error - cache is missing
-            const errorSupply = $combined.call(index(db))
+            const errorSupply = $combined.request(index(db))
 
-            const combinedSupply = $combined.call(index(db, cache))
+            const combinedSupply = $combined.request(index(db, cache))
 
             expect(combinedSupply.get()).toEqual(
                 "user-postgresql://localhost:5432/db"
@@ -314,7 +314,7 @@ describe("Mocks Feature", () => {
                 }
             })
 
-            const supplier = $working.hire($failing).call({})
+            const supplier = $working.hire($failing).request({})
             expect(supplier.get()).toBe("working-value")
             expect(() => {
                 // eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -324,7 +324,7 @@ describe("Mocks Feature", () => {
     })
 
     describe("Accessing supplies after ctx.hire() call", () => {
-        it(".supplies should contain the hired services' supplies properly typed", () => {
+        it(".supplies should contain the hired modules' supplies properly typed", () => {
             const $service = service("service").module({
                 factory: () => "service-value"
             })
@@ -336,7 +336,7 @@ describe("Mocks Feature", () => {
             const $main = service("main").module({
                 required: [$service],
                 factory: (deps, ctx) => {
-                    const supplier = ctx($service).hire($contextual).call({})
+                    const supplier = ctx($service).hire($contextual).request({})
 
                     const contextualSupply = supplier.market[$contextual.tm]
                     expectTypeOf(contextualSupply).not.toEqualTypeOf<any>()
@@ -345,7 +345,7 @@ describe("Mocks Feature", () => {
                 }
             })
 
-            $main.call({})
+            $main.request({})
         })
     })
 })

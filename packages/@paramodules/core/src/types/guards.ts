@@ -40,9 +40,9 @@ type CallerProvidedKeys<MODULE extends UnknownModule> =
 
 export type CircularModuleGuard<MODULE extends UnknownModule> =
     string extends MODULE["tm"] ? MODULE
-    : string extends keyof MODULE["_toSpecifyType"] ? MODULE
+    : string extends keyof MODULE["_reqType"] ? MODULE
     : MODULE["tm"] extends (
-        keyof Omit<MODULE["_toSpecifyType"], CallerProvidedKeys<MODULE>>
+        keyof Omit<MODULE["_reqType"], CallerProvidedKeys<MODULE>>
     ) ?
         CircularModuleError
     :   MODULE

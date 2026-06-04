@@ -7,30 +7,30 @@ describe("services", () => {
         vi.clearAllMocks()
     })
 
-    describe("Specs", () => {
-        it("should add a spec and specify it", () => {
-            const $spec = service("spec").spec<string>()
+    describe("Params", () => {
+        it("should add a param and request it", () => {
+            const $param = service("param").param<string>()
 
-            const supplier = $spec.of("test-value")
+            const supplier = $param.of("test-value")
 
             expect(supplier.get()).toBe("test-value")
-            expect(supplier.service.tm).toBe("spec")
-            expect($spec.tm).toBe("spec")
-            expect($spec._spec).toBe(true)
+            expect(supplier.service.tm).toBe("param")
+            expect($param.tm).toBe("param")
+            expect($param._param).toBe(true)
         })
 
         it("should allow creating services with the same name independently", () => {
-            const $a = service("duplicate").spec<string>()
-            const $b = service("duplicate").spec<string>()
+            const $a = service("duplicate").param<string>()
+            const $b = service("duplicate").param<string>()
 
             expect($a.tm).toBe("duplicate")
             expect($b.tm).toBe("duplicate")
         })
 
         it("should handle different types correctly", () => {
-            const $string = service("string").spec<string>()
-            const $number = service("number").spec<number>()
-            const $object = service("object").spec<{
+            const $string = service("string").param<string>()
+            const $number = service("number").param<number>()
+            const $object = service("object").param<{
                 name: string
             }>()
 
@@ -48,7 +48,7 @@ describe("services", () => {
                 factory: () => "module"
             })
 
-            expect($module.call({}).get()).toBe("module")
+            expect($module.request({}).get()).toBe("module")
             expect($module.tm).toBe("module")
             expect($module._module).toBe(true)
         })
@@ -72,7 +72,7 @@ describe("services", () => {
                 }
             })
 
-            expect($test.call({}).get()).toEqual({
+            expect($test.request({}).get()).toEqual({
                 A: "A",
                 B: "B"
             })
@@ -80,7 +80,7 @@ describe("services", () => {
     })
 
     describe("Supply Chain", () => {
-        it("Buy a module without specifications", () => {
+        it("Request a module without params", () => {
             const $A = service("A").module({
                 factory: () => "A"
             })
@@ -99,13 +99,13 @@ describe("services", () => {
                 }
             })
 
-            expect($main.call({}).get()).toEqual({
+            expect($main.request({}).get()).toEqual({
                 A: "A",
                 B: "B"
             })
         })
 
-        it("should respect module specifications and not override them during call", () => {
+        it("should respect modules in request params and not override them with buildtime module", () => {
             const $resource = service("resource").module({
                 factory: () => "resource"
             })
@@ -120,16 +120,16 @@ describe("services", () => {
             })
 
             expect(
-                $main.call(index($resource.of("initial-resource"))).get()
+                $main.request(index($resource.of("req-resource"))).get()
             ).toEqual({
-                resource: "initial-resource"
+                resource: "req-resource"
             })
         })
 
         it("should enable context switching by calling ctx() in a factory", () => {
-            const $config = service("config").spec<string>()
-            const $name = service("name").spec<string>()
-            const $count = service("count").spec<number>()
+            const $config = service("config").param<string>()
+            const $name = service("name").param<string>()
+            const $count = service("count").param<number>()
 
             const $test = service("test").module({
                 required: [$config, $name, $count],
@@ -146,7 +146,7 @@ describe("services", () => {
                 required: [$test],
                 factory: (supplies, ctx) => {
                     const newTestA = ctx($test)
-                        .call(
+                        .request(
                             index(
                                 $config.of("new-config"),
                                 $name.of("new-name"),
@@ -156,15 +156,15 @@ describe("services", () => {
                         .get()
 
                     const newTestB = ctx($test)
-                        .call(index($config.of("new-config")))
+                        .request(index($config.of("new-config")))
                         .get()
 
                     const newTestC = ctx($test)
-                        .call(index($name.of("new-name")))
+                        .request(index($name.of("new-name")))
                         .get()
 
                     const newTestD = ctx($test)
-                        .call(index($config.of("new-config"), $count.of(42)))
+                        .request(index($config.of("new-config"), $count.of(42)))
                         .get()
 
                     expect(newTestA).toEqual({
@@ -194,7 +194,7 @@ describe("services", () => {
             })
 
             $main
-                .call(
+                .request(
                     index(
                         $config.of("initial-config"),
                         $name.of("initial-name"),
@@ -206,23 +206,23 @@ describe("services", () => {
     })
 
     describe("Factory memoization", () => {
-        it("should create separate memoization contexts for different call contexts", () => {
+        it("should create separate memoization contexts for different requests", () => {
             const factorySpy = vi.fn().mockReturnValue("resource")
             const $resource = service("resource").module({
                 factory: factorySpy
             })
 
-            expect($resource.call({}).get()).toBe("resource")
+            expect($resource.request({}).get()).toBe("resource")
             expect(factorySpy).toHaveBeenCalledTimes(1)
 
             // The memoization works within the same call context
             // Each call() creates a new context, so the factory is called again
-            expect($resource.call({}).get()).toBe("resource")
+            expect($resource.request({}).get()).toBe("resource")
             // Factory is called again for the new assembly context
             expect(factorySpy).toHaveBeenCalledTimes(2)
         })
 
-        it("should memoize factory calls when accessed multiple times within the same call context", () => {
+        it("should memoize factory calls when accessed multiple times within the same request context", () => {
             const factorySpy = vi.fn().mockReturnValue("memoized")
             const $spy = service("spy").module({
                 factory: factorySpy
@@ -238,7 +238,7 @@ describe("services", () => {
                 }
             })
 
-            $test.call({}).get()
+            $test.request({}).get()
             // Factory should only be called once due to memoization within the same assembly context
             expect(factorySpy).toHaveBeenCalledTimes(1)
         })
@@ -266,7 +266,7 @@ describe("services", () => {
                 }
             })
 
-            expect($test.call({}).get()).toEqual({
+            expect($test.request({}).get()).toEqual({
                 A: "A",
                 B: "B"
             })
@@ -318,7 +318,7 @@ describe("services", () => {
                     // Override A - this should trigger recall of B and D
                     // but C should remain cached
                     const newE = ctx($E)
-                        .call(index($A.of(Date.now())))
+                        .request(index($A.of(Date.now())))
                         .get()
 
                     expect(newE.A).not.toBe(E.A)
@@ -328,13 +328,13 @@ describe("services", () => {
                 }
             })
 
-            await $main.call({}).get()
+            await $main.request({}).get()
         })
     })
 
     describe("Automatic lifecycle management", () => {
-        it("should preserve referential identity for modules without spec dependencies when provisioning main", () => {
-            const $session = service("session").spec<{ userId: string }>()
+        it("should preserve referential identity for modules without param dependencies when provisioning main", () => {
+            const $session = service("session").param<{ userId: string }>()
 
             const $db = service("db").module({
                 factory: () => ({ connection: Symbol("db") })
@@ -359,11 +359,11 @@ describe("services", () => {
                 .provision()
 
             const first = $main
-                .call(index($session.of({ userId: "user-a" })))
+                .request(index($session.of({ userId: "user-a" })))
                 .get()
 
             const second = $main
-                .call(index($session.of({ userId: "user-b" })))
+                .request(index($session.of({ userId: "user-b" })))
                 .get()
 
             expect(first.db).toBe(second.db)
@@ -400,7 +400,7 @@ describe("services", () => {
                 }
             })
 
-            const main = $main.call({}).get()
+            const main = $main.request({}).get()
 
             await sleep(10)
 
@@ -438,7 +438,7 @@ describe("services", () => {
                 }
             })
 
-            const main = $main.call({}).get()
+            const main = $main.request({}).get()
 
             await sleep(10)
 
@@ -467,10 +467,10 @@ describe("services", () => {
             await sleep(10)
 
             // Accessing the product should still throw the error
-            expect(() => $main.call({}).get()).toThrow()
+            expect(() => $main.request({}).get()).toThrow()
         })
 
-        it("should work with complex dependency chains and selective initing", async () => {
+        it("should work with complex dependency chains and selective warming up", async () => {
             const ASpy = vi.fn().mockReturnValue("A")
             const BSpy = vi.fn().mockReturnValue("B")
 
@@ -490,7 +490,7 @@ describe("services", () => {
                 }
             })
 
-            const main = $main.call({}).get()
+            const main = $main.request({}).get()
 
             await sleep(10)
 
@@ -506,7 +506,7 @@ describe("services", () => {
                 factory: () => "empty"
             })
 
-            const emptySupply = $empty.call({})
+            const emptySupply = $empty.request({})
             expect(emptySupply.get()).toBe("empty")
         })
     })

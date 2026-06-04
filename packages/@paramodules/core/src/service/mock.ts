@@ -4,7 +4,7 @@ import type { PartialModulePlan } from "#types/internal"
 import { assertModulePlan } from "#validation"
 import type {
     OriginalService,
-    Spec,
+    Param,
     UnknownModule,
     Mock as MockType
 } from "#types/public"
@@ -26,15 +26,15 @@ import type {
  * @returns A mock module with mock flag set to true
  * @public
  */
-export function Mock<NAME extends string, TYPE>() {
+export function Mock<TM extends string, TYPE>() {
     return function mock<
         THIS extends UnknownModule,
         TYPE2 extends THIS["_type"],
         REQUIRED2 extends OriginalService[] = [],
-        OPTIONALS2 extends Spec[] = []
+        OPTIONALS2 extends Param[] = []
     >(
         this: THIS & {
-            name: NAME
+            tm: TM
             _type: TYPE
         },
         plan: PartialModulePlan<TYPE2, REQUIRED2, OPTIONALS2>
@@ -50,7 +50,7 @@ export function Mock<NAME extends string, TYPE>() {
             ...mock,
             hired: [] as [],
             _mock: true as const,
-            _oldToSpecify: this._toSpecifyType,
+            _oldReqType: this._reqType,
             _oldSupplies: this._suppliesType
         } satisfies MockType<THIS, TYPE2, REQUIRED2, OPTIONALS2> as any
     }

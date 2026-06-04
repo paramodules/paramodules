@@ -1,8 +1,8 @@
 {
-    "name": "@marketjs/services",
+    "name": "@paramodules/core",
     "type": "module",
     "version": "0.0.0",
-    "description": "Stateless, parametrizable runtime modules — type-inferred primitives for modular full-stack application architecture.",
+    "description": "Stateless, parametrizable runtime modules — type-inferred primitives for cascading full-stack application architecture.",
     "main": "dist/index.cjs",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",

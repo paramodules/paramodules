@@ -1,12 +1,12 @@
 import type {
     OriginalService as OriginalService,
-    Spec,
+    Param,
     UnknownModule,
     UnknownService,
     Supplier,
     ModuleSupplier
 } from "#types/public"
-import type { SuppliesPlan, MarketPlan, ToSpecify } from "#types/records"
+import type { SuppliesPlan, MarketPlan, Request } from "#types/records"
 import type { Merge } from "#utils"
 
 export interface Service<TM extends string = string, TYPE = unknown> {
@@ -28,7 +28,7 @@ export interface Service<TM extends string = string, TYPE = unknown> {
 export type Factory<
     TYPE,
     REQUIRED extends OriginalService[] = [],
-    OPTIONALS extends Spec[] = []
+    OPTIONALS extends Param[] = []
 > = (
     supplies: SuppliesPlan<{
         required: REQUIRED
@@ -43,7 +43,7 @@ export type Factory<
 type Warmup<
     TYPE,
     REQUIRED extends OriginalService[] = [],
-    OPTIONALS extends Spec[] = []
+    OPTIONALS extends Param[] = []
 > = (
     value: TYPE,
     supplies: SuppliesPlan<{
@@ -55,7 +55,7 @@ type Warmup<
 export type PartialModulePlan<
     TYPE,
     REQUIRED extends OriginalService[] = [],
-    OPTIONALS extends Spec[] = []
+    OPTIONALS extends Param[] = []
 > = {
     required?: [...REQUIRED]
     optionals?: [...OPTIONALS]
@@ -67,7 +67,7 @@ export type PartialModulePlan<
 export type ModulePlan<
     TYPE,
     REQUIRED extends OriginalService[],
-    OPTIONALS extends Spec[]
+    OPTIONALS extends Param[]
 > = {
     required: [...REQUIRED]
     optionals: [...OPTIONALS]
@@ -76,7 +76,7 @@ export type ModulePlan<
     context?: unknown
 }
 
-export type UnknownModulePlan = ModulePlan<unknown, OriginalService[], Spec[]>
+export type UnknownModulePlan = ModulePlan<unknown, OriginalService[], Param[]>
 
 /**
  * ctx transforms modules into contextualized modules that can be called again with new specs.
@@ -87,21 +87,18 @@ export type UnknownModulePlan = ModulePlan<unknown, OriginalService[], Spec[]>
  */
 export type Ctx<
     CALLER_PLAN extends Pick<UnknownModulePlan, "optionals" | "required">
-> = <Service extends UnknownService>(
-    service: Service & (UnknownService | Spec)
-) => Service extends UnknownModule ?
+> = <SERVICE extends UnknownService>(
+    service: SERVICE & UnknownService
+) => SERVICE extends UnknownModule ?
     Merge<
-        Service,
+        SERVICE,
         {
             _caller: Merge<
                 ModuleSupplier<UnknownModule>,
                 { market: MarketPlan<CALLER_PLAN> }
             >
-            _toSpecifyType: Omit<
-                Service["_toSpecifyType"],
-                keyof ToSpecify<CALLER_PLAN>
-            > &
-                Partial<ToSpecify<CALLER_PLAN>>
+            _reqType: Omit<SERVICE["_reqType"], keyof Request<CALLER_PLAN>> &
+                Partial<Request<CALLER_PLAN>>
         }
     >
-:   Service & Spec // simply returns the service itself if it's a request service (noop)
+:   SERVICE & Param // simply returns the service itself if it's a request service (noop)

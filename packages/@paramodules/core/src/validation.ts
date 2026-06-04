@@ -4,7 +4,7 @@
  * @internal
  */
 
-import type { Spec, UnknownModule, UnknownService } from "#types/public"
+import type { Param, UnknownModule, UnknownService } from "#types/public"
 
 /**
  * Validates that a value is a string.
@@ -120,7 +120,7 @@ export function assertModulePlan(
     const optionals = plan.optionals ?? []
 
     assertServices(name, required)
-    assertSpecs(name, optionals)
+    assertParams(name, optionals)
 
     if (plan.warmup !== undefined) {
         assertFunction(name, plan.warmup)
@@ -128,13 +128,13 @@ export function assertModulePlan(
 }
 
 /**
- * Validates the optional opts object passed to `tm(name).spec(opts)`.
- * @param name - Spec name, used in error messages
+ * Validates the optional opts object passed to `tm(name).param(opts)`.
+ * @param name - Param name, used in error messages
  * @param opts - The options object to validate, or undefined
  * @internal
  * @throws TypeError if opts is not a plain object
  */
-export function assertSpecOptions(
+export function assertParamOptions(
     name: string,
     opts: { context?: unknown } | undefined
 ) {
@@ -142,13 +142,13 @@ export function assertSpecOptions(
     assertPlainObject(name, opts)
 }
 
-export function assertSpec(service: unknown): asserts service is Spec {
+export function assertParam(service: unknown): asserts service is Param {
     assertHasProperty("noname", service, "tm")
     assertString("noname", service.tm)
 
-    assertHasProperty(service.tm, service, "_spec")
-    if (!service._spec) {
-        throw new TypeError(`${service.tm} is not a spec`)
+    assertHasProperty(service.tm, service, "_param")
+    if (!service._param) {
+        throw new TypeError(`${service.tm} is not a param`)
     }
 }
 
@@ -193,7 +193,7 @@ export function assertServices(
     }
     services.forEach((tm) => {
         try {
-            assertSpec(tm)
+            assertParam(tm)
             return
         } catch (e) {
             assertModule(tm, allowMocks)
@@ -201,15 +201,15 @@ export function assertServices(
     })
 }
 
-export function assertSpecs(
+export function assertParams(
     name: string,
-    specs: unknown
-): asserts specs is Spec[] {
-    if (!Array.isArray(specs)) {
+    params: unknown
+): asserts params is Param[] {
+    if (!Array.isArray(params)) {
         throw new TypeError(`${name} must be an array`)
     }
-    specs.forEach((spec) => {
-        assertSpec(spec)
+    params.forEach((param) => {
+        assertParam(param)
     })
 }
 

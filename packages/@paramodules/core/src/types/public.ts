@@ -5,15 +5,15 @@ import type {
     MarketRecord,
     RegistryRecord,
     Supplies,
-    ToSpecify
+    Request
 } from "#types/records"
 import type { MergeStringTuples } from "#types/utils"
 import type { Merge } from "#utils"
 
-export interface Spec<NAME extends string = string, TYPE = unknown>
+export interface Param<NAME extends string = string, TYPE = unknown>
     extends Service<NAME, TYPE> {
     _type: TYPE
-    _spec: true
+    _param: true
     _mock: false
 }
 
@@ -22,14 +22,14 @@ export interface Module<
     TYPE,
     OPTIONAL_KEYS extends string,
     CALLER extends ModuleSupplier<UnknownModule> | undefined,
-    TO_SPECIFY extends Partial<MarketRecord<UnknownService>>,
+    REQUEST extends Partial<MarketRecord<UnknownService>>,
     HIRED extends string[],
     MOCK extends boolean = boolean
 > extends Service<NAME, TYPE> {
     /** Calls the module by providing the specified dependencies */
-    call: <THIS extends UnknownModule>(
+    request: <THIS extends UnknownModule>(
         this: THIS,
-        specified: THIS["_toSpecifyType"]
+        req: THIS["_reqType"]
     ) => Supplier<THIS>
     provision: <THIS extends UnknownModule>(this: THIS) => THIS
     mock: <
@@ -40,7 +40,7 @@ export interface Module<
         },
         TYPE2 extends THIS["_type"],
         REQUIRED2 extends OriginalService[] = [],
-        OPTIONALS2 extends Spec[] = []
+        OPTIONALS2 extends Param[] = []
     >(
         this: THIS,
         plan: PartialModulePlan<TYPE2, REQUIRED2, OPTIONALS2>
@@ -62,11 +62,8 @@ export interface Module<
                     [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
                 },
                 Merge<
-                    Omit<
-                        THIS["_toSpecifyType"],
-                        keyof HIRED[number]["_oldToSpecifyType"]
-                    >,
-                    HIRED[number]["_toSpecifyType"]
+                    Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
+                    HIRED[number]["_reqType"]
                 >
             >,
             MergeStringTuples<
@@ -80,18 +77,18 @@ export interface Module<
         HIRED
     >
     _module: true
-    _spec: false
+    _param: false
     _type: TYPE
     _optionalKeys: OPTIONAL_KEYS
     _caller: CALLER
-    _toSpecifyType: TO_SPECIFY
-    _suppliesType: Supplies<TO_SPECIFY, OPTIONAL_KEYS>
-    _oldToSpecifyType: TO_SPECIFY
-    _oldSuppliesType: Supplies<TO_SPECIFY, OPTIONAL_KEYS>
+    _reqType: REQUEST
+    _suppliesType: Supplies<REQUEST, OPTIONAL_KEYS>
+    _oldReqType: REQUEST
+    _oldSuppliesType: Supplies<REQUEST, OPTIONAL_KEYS>
     /** Array of services this service depends on */
     _required: OriginalService[]
     /** Array of optional request services this service may depend on */
-    _optionals: Spec[]
+    _optionals: Param[]
     _team: UnknownService[]
     _hired: HIRED
     /** Factory function that creates the service's value from its dependencies */
@@ -105,7 +102,7 @@ export interface Module<
     _mock: MOCK
 }
 
-export type UnknownService = UnknownModule | Spec
+export type UnknownService = UnknownModule | Param
 export type OriginalService = UnknownService & {
     _mock: false
 }
@@ -124,24 +121,24 @@ export type Mock<
     MODULE extends UnknownModule,
     TYPE2 extends MODULE["_type"],
     REQUIRED2 extends OriginalService[] = [],
-    OPTIONALS2 extends Spec[] = []
+    OPTIONALS2 extends Param[] = []
 > = Omit<
     Module<
         MODULE["tm"],
         TYPE2,
         OPTIONALS2[number]["tm"],
         undefined,
-        ToSpecify<{
+        Request<{
             required: REQUIRED2
             optionals: OPTIONALS2
         }>,
         [],
         true
     >,
-    "_mock" | "_oldToSpecifyType" | "_oldSuppliesType"
+    "_mock" | "_oldReqType" | "_oldSuppliesType"
 > & {
     _mock: true
-    _oldToSpecifyType: MODULE["_toSpecifyType"]
+    _oldReqType: MODULE["_reqType"]
     _oldSuppliesType: MODULE["_suppliesType"]
 }
 
@@ -159,15 +156,15 @@ export type ModuleSupplier<MODULE extends UnknownModule> = {
     get: () => MODULE["_type"]
     supplies: MODULE["_suppliesType"]
     market: Market<MODULE>
-    _specified: boolean
+    _requested: boolean
 }
 
-export type SpecSupplier<SPEC extends Spec> = {
+export type SpecSupplier<SPEC extends Param> = {
     service: SPEC
     get: () => SPEC["_type"]
-    _specified: true
+    _requested: true
 }
 
 export type Supplier<SERVICE extends UnknownService> =
-    SERVICE extends Spec ? SpecSupplier<SERVICE>
+    SERVICE extends Param ? SpecSupplier<SERVICE>
     :   ModuleSupplier<Extract<SERVICE, UnknownModule>>

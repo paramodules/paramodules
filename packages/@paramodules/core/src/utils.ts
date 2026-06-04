@@ -108,8 +108,8 @@ export function isModuleSupplier<SUPPLIER extends Supplier<UnknownService>>(
     return isModule(supplier.service)
 }
 
-export function isSpecified(supplier: Supplier<UnknownService>) {
-    return "_specified" in supplier && supplier._specified === true
+export function wasRequested(supplier: Supplier<UnknownService>) {
+    return "_requested" in supplier && supplier._requested === true
 }
 
 /**

@@ -22,28 +22,28 @@ describe("Context Propagation", () => {
             }
         })
 
-        const result = $main.call({}).get()
+        const result = $main.request({}).get()
         expect(result).toBe("main-result")
         expect(factoryMock).not.toHaveBeenCalled()
     })
 
-    it("should require specs for hired contextual modules", () => {
-        const $input = service("input").spec<string>()
+    it("should require params for hired contextual modules", () => {
+        const $param = service("param").param<string>()
 
         const $contextual1 = service("contextual1").module({
-            required: [$input],
-            factory: ({ input }) => `A1: ${input}`
+            required: [$param],
+            factory: ({ param }) => `A1: ${param}`
         })
 
         const $contextual2 = service("contextual2").module({
-            required: [$input],
-            factory: ({ input }) => `A2: ${input}`
+            required: [$param],
+            factory: ({ param }) => `A2: ${param}`
         })
 
         const $base = service("base").module({
             factory: (deps, ctx) => {
                 return ctx($contextual1)
-                    .call(index($input.of("test")))
+                    .request(index($param.of("test")))
                     .get()
             }
         })
@@ -51,8 +51,8 @@ describe("Context Propagation", () => {
         const $extended = $base.hire($contextual2)
 
         // @ts-expect-error - hired request supplies must be supplied also
-        $extended.call({})
-        const result = $extended.call(index($input.of("unused"))).get()
+        $extended.request({})
+        const result = $extended.request(index($param.of("unused"))).get()
         expect(result).toBe("A1: test")
     })
 
@@ -65,7 +65,7 @@ describe("Context Propagation", () => {
 
         const $main = service("main").module({
             factory: (deps, ctx) => {
-                const contextualSupply = ctx($contextual).call({})
+                const contextualSupply = ctx($contextual).request({})
                 const value = contextualSupply.get()
 
                 expect(factoryMock).toHaveBeenCalledTimes(1)
@@ -78,20 +78,20 @@ describe("Context Propagation", () => {
             }
         })
 
-        const result = $main.call({}).get()
+        const result = $main.request({}).get()
         expect(result).toEqual({
             main: "main-result",
             contextual: "value"
         })
     })
 
-    it("should support conditional calling based on context (session admin example)", () => {
-        const $session = service("session").spec<{
+    it("should support conditions based on context (session admin example)", () => {
+        const $session = service("session").param<{
             userId: string
             role: string
         }>()
 
-        const $adminSession = service("adminSession").spec<{
+        const $adminSession = service("adminSession").param<{
             userId: string
             role: "admin"
         }>()
@@ -112,7 +112,7 @@ describe("Context Propagation", () => {
                 const role = session.role
 
                 if (role === "admin") {
-                    const adminFeature = ctx($adminFeature).call(
+                    const adminFeature = ctx($adminFeature).request(
                         index($adminSession.of({ ...session, role }))
                     )
 
@@ -133,7 +133,7 @@ describe("Context Propagation", () => {
             userId: "admin123",
             role: "admin"
         })
-        const adminResult = $main.call(index(adminSession)).get()
+        const adminResult = $main.request(index(adminSession)).get()
 
         expect(adminResult).toEqual({
             user: "admin123",
@@ -144,7 +144,7 @@ describe("Context Propagation", () => {
             userId: "user456",
             role: "user"
         })
-        const userResult = $main.call(index(userSession)).get()
+        const userResult = $main.request(index(userSession)).get()
 
         expect(userResult).toEqual({
             user: "user456",
@@ -161,19 +161,19 @@ describe("Context Propagation", () => {
         })
 
         const $main = service("main").module({
-            factory: (deps, ctx) => {
-                ctx($failing).call({}).get()
+            factory: (supplies, ctx) => {
+                ctx($failing).request({}).get()
                 return "main"
             }
         })
 
         expect(() => {
-            $main.call({}).get()
+            $main.request({}).get()
         }).toThrow("Context service failed")
     })
 
     it("should support complex contextual dependency chains", () => {
-        const $db = service("db").spec<string>()
+        const $db = service("db").param<string>()
 
         const $repository = service("repo").module({
             required: [$db],
@@ -192,21 +192,21 @@ describe("Context Propagation", () => {
         const $main = service("main").module({
             factory: (deps, ctx) => {
                 const feature = ctx($feature)
-                    .call(index($db.of("postgresql://localhost:5432/mydb")))
+                    .request(index($db.of("postgresql://localhost:5432/mydb")))
                     .get()
 
                 return "main-" + feature
             }
         })
 
-        const result = $main.call({}).get()
+        const result = $main.request({}).get()
         expect(result).toEqual(
             "main-feature-repo-postgresql://localhost:5432/mydb"
         )
     })
 
-    it("should properly overwrite spec in contextual call()", () => {
-        const $number = service("number").spec<number>()
+    it("should properly overwrite param in contextual call()", () => {
+        const $number = service("number").param<number>()
         const $doubler = service("doubler").module({
             required: [$number],
             factory: ({ number }) => {
@@ -225,18 +225,18 @@ describe("Context Propagation", () => {
             required: [$doubler],
             factory: (deps, ctx) => {
                 const assembled = ctx($quadrupler)
-                    .call(index($number.of(5)))
+                    .request(index($number.of(5)))
                     .get()
                 return assembled
             }
         })
 
-        const result = $main.call(index($number.of(10))).get()
+        const result = $main.request(index($number.of(10))).get()
         expect(result).toEqual(20)
     })
 
-    it("should preserve suppliers from previous calls that don't depend on the new specified", async () => {
-        const $number = service("number").spec<number>()
+    it("should preserve suppliers from parent requests that don't depend on the new request", async () => {
+        const $number = service("number").param<number>()
         const $dummy = service("dummy").module({
             factory: () => "dummy"
         })
@@ -260,19 +260,19 @@ describe("Context Propagation", () => {
             required: [$dummy, $counter],
             factory: (deps, ctx) => {
                 const reassembled = ctx($reassembled)
-                    .call(index($number.of(10)))
+                    .request(index($number.of(10)))
                     .get()
-                const counter = ctx($counter).call({}).get()
+                const counter = ctx($counter).request({}).get()
                 return counter
             }
         })
 
-        $main.call(index($number.of(20))).get()
+        $main.request(index($number.of(20))).get()
         expect(timesCalled).toEqual(1)
     })
 
-    it("Providing undefined supplier to call() should erase the previous supplier", () => {
-        const $number = service("number").spec<number>()
+    it("Providing undefined supplier to request() should erase the previous supplier", () => {
+        const $number = service("number").param<number>()
         const $username = service("username").module({
             required: [$number],
             factory: ({ number }) => {
@@ -291,19 +291,19 @@ describe("Context Propagation", () => {
             required: [$number, $username],
             factory: (deps, ctx) => {
                 const assembled = ctx($greeter)
-                    .call({ [$username.tm]: undefined })
+                    .request({ [$username.tm]: undefined })
                     .get()
                 return assembled
             }
         })
 
         const result = $main
-            .call(index($number.of(10), $username.of("Ted-10")))
+            .request(index($number.of(10), $username.of("Ted-10")))
             .get()
         expect(result).toEqual("Hello, John-10!")
     })
 
-    it("should support mocks with contextual calling", () => {
+    it("should support mocks with contextual requests", () => {
         const factoryMock = vi.fn().mockReturnValue("product")
 
         const $contextual = service("contextual").module({
@@ -318,19 +318,19 @@ describe("Context Propagation", () => {
             factory: (deps, ctx) => {
                 expect(ctx($contextual).tm).toBe($contextual.tm)
 
-                const assembled = ctx($contextual).call({})
+                const assembled = ctx($contextual).request({})
                 const product = assembled.get()
 
                 return `mock-${product}`
             }
         })
 
-        const result = $mock.call({}).get()
+        const result = $mock.request({}).get()
         expect(result).toBe("mock-product")
         expect(factoryMock).toHaveBeenCalledTimes(1)
     })
 
-    it("should support mocks with multiple contextual calls", () => {
+    it("should support mocks with multiple contextual requests", () => {
         const ASpy = vi.fn().mockReturnValue("A")
         const BSpy = vi.fn().mockReturnValue("B")
 
@@ -348,14 +348,14 @@ describe("Context Propagation", () => {
 
         const $mock = $base.mock({
             factory: (deps, ctx) => {
-                const contextualA = ctx($A).call({}).get()
-                const contextualB = ctx($B).call({}).get()
+                const contextualA = ctx($A).request({}).get()
+                const contextualB = ctx($B).request({}).get()
 
                 return `base-value-${contextualA}-${contextualB}`
             }
         })
 
-        const result = $mock.call({}).get()
+        const result = $mock.request({}).get()
         expect(result).toBe("base-value-A-B")
         expect(ASpy).toHaveBeenCalledTimes(1)
         expect(BSpy).toHaveBeenCalledTimes(1)
@@ -374,11 +374,11 @@ describe("Context Propagation", () => {
         })
         const $base = service("base").module({
             factory: (deps, ctx) => {
-                return ctx($original).call({}).get()
+                return ctx($original).request({}).get()
             }
         })
 
-        const result = $base.hire($mock).call({}).get()
+        const result = $base.hire($mock).request({}).get()
 
         await sleep(10)
 
@@ -398,7 +398,7 @@ describe("Context Propagation", () => {
             }
         })
 
-        const result = $mock.call({}).get()
+        const result = $mock.request({}).get()
         expect(result).toBe("mock-value")
     })
 
@@ -418,13 +418,13 @@ describe("Context Propagation", () => {
         const $mock = $base.mock({
             factory: (deps, ctx) => {
                 expect(() => {
-                    ctx($error).call({}).get()
+                    ctx($error).request({}).get()
                 }).toThrow("Context service error")
                 return "mock-value"
             }
         })
 
-        const result = $mock.call({}).get()
+        const result = $mock.request({}).get()
         expect(result).toBe("mock-value")
     })
 
@@ -445,7 +445,7 @@ describe("Context Propagation", () => {
         const $main = service("main").module({
             factory: (deps, ctx) => {
                 expect(() => {
-                    ctx($base).call({}).get()
+                    ctx($base).request({}).get()
                 }).toThrow()
                 return "main"
             }
@@ -453,7 +453,7 @@ describe("Context Propagation", () => {
 
         const $hired = $main.hire($error)
 
-        const result = $hired.call({}).get()
+        const result = $hired.request({}).get()
         expect(result).toBe("main")
     })
 
@@ -461,7 +461,7 @@ describe("Context Propagation", () => {
         const dbSpy = vi.fn().mockReturnValue("db")
         const testSpy = vi.fn().mockReturnValue("test")
 
-        const $config = service("config").spec<{ env: string }>()
+        const $config = service("config").param<{ env: string }>()
         const $db = service("db").module({
             required: [$config],
             factory: dbSpy
@@ -478,14 +478,14 @@ describe("Context Propagation", () => {
         const $mock = $base.mock({
             factory: (deps, ctx) => {
                 const test = ctx($test)
-                    .call(index($config.of({ env: "test" })))
+                    .request(index($config.of({ env: "test" })))
                     .get()
 
                 return `base-${test}`
             }
         })
 
-        const result = $mock.call({}).get()
+        const result = $mock.request({}).get()
         expect(result).toBe("base-test")
     })
 
@@ -508,7 +508,7 @@ describe("Context Propagation", () => {
 
         const $base = service("base").module({
             factory: (deps, ctx) => {
-                return ctx($original).call({}).get()
+                return ctx($original).request({}).get()
             }
         })
 
@@ -517,8 +517,8 @@ describe("Context Propagation", () => {
         expectTypeOf($hired).toExtend<DuplicateServiceError>()
     })
 
-    describe("Accessing suppliers after hire() call in a factory", () => {
-        it("suppliers of supplier built with hire() should contain only the hired modules' supplies properly typed", () => {
+    describe("Accessing supplies after hire() call in a factory", () => {
+        it("supplies of supplier built with hire() should contain only the hired modules' supplies properly typed", () => {
             const $contextual1 = service("contextual1").module({
                 factory: () => "contextual1-value"
             })
@@ -529,7 +529,9 @@ describe("Context Propagation", () => {
 
             const $main = service("main").module({
                 factory: (supplies, ctx) => {
-                    const supply = ctx($contextual1).hire($contextual2).call({})
+                    const supply = ctx($contextual1)
+                        .hire($contextual2)
+                        .request({})
 
                     expectTypeOf(
                         supply.market.contextual2
@@ -548,27 +550,27 @@ describe("Context Propagation", () => {
                 }
             })
 
-            $main.call({}).get()
+            $main.request({}).get()
         })
     })
 
-    describe("Type-safety of nested ctx().call()", () => {
-        it("should properly type the result of nested ctx().buy() calls", () => {
-            const $inputA = service("inputA").spec<string>()
-            const $inputB = service("inputB").spec<string>()
+    describe("Type-safety of nested ctx().request()", () => {
+        it("should properly type the result of nested ctx().request() calls", () => {
+            const $paramA = service("paramA").param<string>()
+            const $paramB = service("paramB").param<string>()
 
             const $A = service("A").module({
-                required: [$inputA],
+                required: [$paramA],
                 factory: () => {
                     return "A-value"
                 }
             })
 
             const $B = service("B").module({
-                required: [$inputA, $inputB],
-                factory: ({ inputA, inputB }) => {
-                    expect(inputA).toBe("inputA-value")
-                    expect(inputB).toBe("inputB-value")
+                required: [$paramA, $paramB],
+                factory: ({ paramA, paramB }) => {
+                    expect(paramA).toBe("paramA-value")
+                    expect(paramB).toBe("paramB-value")
                     return "B-value"
                 }
             })
@@ -576,40 +578,40 @@ describe("Context Propagation", () => {
             const $main = service("main").module({
                 required: [$A],
                 factory: (deps, ctx) => {
-                    // @ts-expect-error - input supply inputB is not supplied
-                    ctx($B).call({})
-                    // Works, input supply inputA doesn't need to be supplied, reused from deps
+                    // @ts-expect-error - param supply paramB is not supplied
+                    ctx($B).request({})
+                    // Works, param supply paramA doesn't need to be supplied, reused from deps
                     ctx($B)
-                        .call(index($inputB.of("inputB-value")))
+                        .request(index($paramB.of("paramB-value")))
                         .get()
                     return "main-value"
                 }
             })
 
-            $main.call(index($inputA.of("inputA-value"))).get()
+            $main.request(index($paramA.of("paramA-value"))).get()
         })
 
-        it("Calling ctx($service).call() should never require any specs to be specified", () => {
-            const $input = service("input").spec<string>()
+        it("Calling ctx($service).request() should never require any params to be specified", () => {
+            const $param = service("param").param<string>()
             const $product = service("product").module({
-                required: [$input],
-                factory: ({ input }) => {
-                    return input
+                required: [$param],
+                factory: ({ param }) => {
+                    return param
                 }
             })
 
             const $main = service("main").module({
                 required: [$product],
                 factory: (supplies, ctx) => {
-                    expect(ctx($product).call({}).get()).toBe("input-value")
+                    expect(ctx($product).request({}).get()).toBe("param-value")
                 }
             })
 
-            $main.call(index($input.of("input-value"))).get()
+            $main.request(index($param.of("param-value"))).get()
         })
 
-        it("Calling ctx().hire(mock).call() should be properly typed", () => {
-            const $input = service("input").spec<string>()
+        it("Calling ctx().hire(mock).request() should be properly typed", () => {
+            const $param = service("param").param<string>()
             const $A = service("A").module({
                 factory: () => "A-value"
             })
@@ -620,7 +622,7 @@ describe("Context Propagation", () => {
             })
 
             const $AMock = $A.mock({
-                required: [$input],
+                required: [$param],
                 factory: () => "AMock-value"
             })
 
@@ -629,16 +631,16 @@ describe("Context Propagation", () => {
                     const hired = ctx($B).hire($AMock)
 
                     expect(() => {
-                        // @ts-expect-error - input supply is not supplied
-                        hired.call({}).get()
+                        // @ts-expect-error - param supply is not supplied
+                        hired.request({}).get()
                     }).toThrow()
                     expect(
-                        hired.call(index($input.of("input-value"))).get()
+                        hired.request(index($param.of("param-value"))).get()
                     ).toBe("AMock-value")
                 }
             })
 
-            $main.call({}).get()
+            $main.request({}).get()
         })
     })
 })

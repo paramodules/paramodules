@@ -79,10 +79,10 @@ export function _resolve<THIS extends UnknownModule>(
     const supplier = {
         tm: this.tm,
         get: once(() => {
-            this._required.forEach((tm) => {
-                if (!(tm.tm in supplies)) {
+            this._required.forEach((service) => {
+                if (!(service.tm in supplies)) {
                     // This error will be catched in warmup phase, but will trigger if unpack() is called again afterwards.
-                    throw new Error(`Dependency ${tm.tm} is not available`)
+                    throw new Error(`Dependency ${service.tm} is not available`)
                 }
             })
             const value = this._factory(
@@ -106,7 +106,7 @@ export function _resolve<THIS extends UnknownModule>(
                 optionals: this.service._optionals
             })(tm)
         },
-        _specified: false as const
+        _requested: false as const
     }
 
     return supplier as any

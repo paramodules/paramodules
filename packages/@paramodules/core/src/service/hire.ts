@@ -1,7 +1,7 @@
 import { team } from "#service/main"
 import type { ModuleGuard } from "#types/guards"
 import type { Module } from "#types/public"
-import type { Supplier, UnknownModule, UnknownService } from "#types/public"
+import type { Supplier, UnknownModule } from "#types/public"
 import type { Supplies } from "#types/records"
 import type { MergeStringTuples } from "#types/utils"
 import type { Merge } from "#utils"
@@ -37,11 +37,8 @@ export function Hire() {
                     [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
                 },
                 Merge<
-                    Omit<
-                        THIS["_toSpecifyType"],
-                        keyof HIRED[number]["_oldToSpecifyType"]
-                    >,
-                    HIRED[number]["_toSpecifyType"]
+                    Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
+                    HIRED[number]["_reqType"]
                 >
             >,
             MergeStringTuples<
@@ -57,15 +54,15 @@ export function Hire() {
         assertModules(this.tm, hired, true)
         const mergedServices = [
             ...this._required.filter(
-                (oldTM) => !hired.some((newTM) => newTM.tm === oldTM.tm)
+                (oldService) =>
+                    !hired.some((newService) => newService.tm === oldService.tm)
             ),
             ...hired
         ]
 
         const mergedHired = [
             ...this._hired.filter(
-                (oldName) =>
-                    !hired.some((newService) => newService.tm === oldName)
+                (oldTM) => !hired.some((newService) => newService.tm === oldTM)
             ),
             ...hired.map((newService) => newService.tm)
         ] as MergeStringTuples<
@@ -75,20 +72,17 @@ export function Hire() {
             }
         >
 
-        const _toSpecify = null as unknown as Merge<
+        const _reqType = null as unknown as Merge<
             {
                 [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
             },
             Merge<
-                Omit<
-                    THIS["_toSpecifyType"],
-                    keyof HIRED[number]["_oldToSpecifyType"]
-                >,
-                HIRED[number]["_toSpecifyType"]
+                Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
+                HIRED[number]["_reqType"]
             >
         >
         const _suppliesType = null as unknown as Supplies<
-            typeof _toSpecify,
+            typeof _reqType,
             THIS["_optionalKeys"]
         >
 
@@ -97,7 +91,7 @@ export function Hire() {
             _required: mergedServices,
             _hired: mergedHired,
             _team: team(this.tm, mergedServices, this._optionals),
-            _toSpecifyType: _toSpecify,
+            _reqType,
             _suppliesType,
             _caller: {
                 ...this._caller,
@@ -108,7 +102,7 @@ export function Hire() {
                         .reduce((acc, known) => ({ ...acc, ...known }), {})
                 }
             },
-            _oldToSpecifyType: _toSpecify,
+            _oldReqType: _reqType,
             _oldSuppliesType: _suppliesType,
             _mock: false as const
         } satisfies Module<
@@ -121,11 +115,8 @@ export function Hire() {
                     [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
                 },
                 Merge<
-                    Omit<
-                        THIS["_toSpecifyType"],
-                        keyof HIRED[number]["_oldToSpecifyType"]
-                    >,
-                    HIRED[number]["_toSpecifyType"]
+                    Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
+                    HIRED[number]["_reqType"]
                 >
             >,
             MergeStringTuples<

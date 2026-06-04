@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest"
 import { service } from "#index"
 
 describe("Runtime Validation", () => {
-    describe("spec()", () => {
-        it("should create specs and allow specifying values", () => {
-            const $value = service("value").spec<string>()
+    describe("param()", () => {
+        it("should create params and allow specifying values", () => {
+            const $value = service("value").param<string>()
             const supplier = $value.of("test")
 
             expect($value.tm).toBe("value")
@@ -67,23 +67,23 @@ describe("Runtime Validation", () => {
     })
 
     describe("module.call()", () => {
-        it("should throw TypeError when specified is not an object", () => {
+        it("should throw TypeError when request is not an object", () => {
             const $resource = service("resource").module({
                 factory: () => ({})
             })
-            expect(() => $resource.call(null as any)).toThrow(TypeError)
-            expect(() => $resource.call(null as any)).toThrow(
-                "specified must be an object, got null"
+            expect(() => $resource.request(null as any)).toThrow(TypeError)
+            expect(() => $resource.request(null as any)).toThrow(
+                "request must be an object, got null"
             )
         })
 
-        it("should throw TypeError when specified is an array", () => {
+        it("should throw TypeError when request is an array", () => {
             const $resource = service("resource").module({
                 factory: () => ({})
             })
-            expect(() => $resource.call([] as any)).toThrow(TypeError)
-            expect(() => $resource.call([] as any)).toThrow(
-                "specified must be an object, not an array"
+            expect(() => $resource.request([] as any)).toThrow(TypeError)
+            expect(() => $resource.request([] as any)).toThrow(
+                "request must be an object, not an array"
             )
         })
     })

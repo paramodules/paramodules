@@ -3,8 +3,8 @@ import { index, service } from "#index"
 
 describe("Optionals Feature", () => {
     describe("Basic Optional Usage", () => {
-        it("should allow defining optional specs in module plan", () => {
-            const $optional = service("optional").spec<string>()
+        it("should allow defining optional params in module plan", () => {
+            const $optional = service("optional").param<string>()
 
             const $module = service("module").module({
                 optionals: [$optional],
@@ -15,19 +15,19 @@ describe("Optionals Feature", () => {
             })
 
             expect($module._optionals).toEqual([$optional])
-            expect($module.call({}).get()).toEqual(undefined)
-            expect($module.call(index($optional.of("test"))).get()).toEqual(
+            expect($module.request({}).get()).toEqual(undefined)
+            expect($module.request(index($optional.of("test"))).get()).toEqual(
                 "test"
             )
             expect(
                 // @ts-expect-error - invalid type
-                $module.call(index($optional.of(55))).get()
+                $module.request(index($optional.of(55))).get()
             ).toEqual(55)
         })
 
         it("should work when optional is NOT provided", () => {
-            const $config = service("config").spec<string>()
-            const $optional = service("optional").spec<number>()
+            const $config = service("config").param<string>()
+            const $optional = service("optional").param<number>()
 
             const $module = service("module").module({
                 required: [$config],
@@ -41,7 +41,7 @@ describe("Optionals Feature", () => {
                 }
             })
 
-            const result = $module.call(index($config.of("test"))).get()
+            const result = $module.request(index($config.of("test"))).get()
 
             expect(result).toEqual({
                 config: "test",
@@ -51,10 +51,10 @@ describe("Optionals Feature", () => {
         })
 
         it("should support multiple optionals", () => {
-            const $required = service("required").spec<string>()
-            const $opt1 = service("opt1").spec<number>()
-            const $opt2 = service("opt2").spec<boolean>()
-            const $opt3 = service("opt3").spec<string>()
+            const $required = service("required").param<string>()
+            const $opt1 = service("opt1").param<number>()
+            const $opt2 = service("opt2").param<boolean>()
+            const $opt3 = service("opt3").param<string>()
 
             const $module = service("module").module({
                 required: [$required],
@@ -71,7 +71,7 @@ describe("Optionals Feature", () => {
 
             // Provide only some optionals
             const result = $module
-                .call(index($required.of("test"), $opt2.of(true)))
+                .request(index($required.of("test"), $opt2.of(true)))
                 .get()
 
             expect(result).toEqual({
@@ -85,8 +85,8 @@ describe("Optionals Feature", () => {
 
     describe("Type Safety with Optionals", () => {
         it("should make optional supplies nullable in supplies type", () => {
-            const $required = service("required").spec<string>()
-            const $optional = service("optional").spec<number>()
+            const $required = service("required").param<string>()
+            const $optional = service("optional").param<number>()
 
             const $module = service("module").module({
                 required: [$required],
@@ -100,15 +100,15 @@ describe("Optionals Feature", () => {
             })
 
             // Should not require optional in ToSpecify
-            $module.call(index($required.of("test"))).get()
+            $module.request(index($required.of("test"))).get()
 
             // But should allow it
-            $module.call(index($required.of("test"), $optional.of(42)))
+            $module.request(index($required.of("test"), $optional.of(42)))
         })
 
-        it("should require all required specs in ToSupply", () => {
-            const $required = service("required").spec<string>()
-            const $optional = service("optional").spec<number>()
+        it("should require all required params in request", () => {
+            const $required = service("required").param<string>()
+            const $optional = service("optional").param<number>()
 
             const $service = service("service").module({
                 required: [$required],
@@ -122,40 +122,40 @@ describe("Optionals Feature", () => {
 
             expect(() => {
                 // @ts-expect-error - missing required service
-                $service.call(index($optional.of(42))).get()
+                $service.request(index($optional.of(42))).get()
             }).toThrow()
 
             // Should work without optional
-            $service.call(index($required.of("test"))).get()
+            $service.request(index($required.of("test"))).get()
         })
     })
 
-    describe("Spec in ctx wrapper", () => {
-        it("should just return spec (noop)", () => {
-            const $input = service("input").spec<string>()
+    describe("Param in ctx wrapper", () => {
+        it("should just return param (noop)", () => {
+            const $param = service("param").param<string>()
             const $contextual = service("contextual").module({
-                factory: () => "assembled"
+                factory: () => "value"
             })
 
             const $module = service("module").module({
-                optionals: [$input],
+                optionals: [$param],
                 factory: (deps, ctx) => {
                     // Both should be in ctx
-                    expect(ctx($input)).toBe($input)
+                    expect(ctx($param)).toBe($param)
                     expect(ctx($contextual).tm).toBe($contextual.tm)
                 }
             })
 
-            $module.call({}).get()
+            $module.request({}).get()
         })
     })
 
     describe("Optionals with Nested Dependencies", () => {
         it("should handle optionals in nested module chains", () => {
-            const $optionalConfig = service("optionalConfig").spec<{
+            const $optionalConfig = service("optionalConfig").param<{
                 apiKey: string
             }>()
-            const $baseConfig = service("baseConfig").spec<{
+            const $baseConfig = service("baseConfig").param<{
                 url: string
             }>()
 
@@ -179,7 +179,9 @@ describe("Optionals Feature", () => {
 
             // Without optional
             const result1 = $app
-                .call(index($baseConfig.of({ url: "https://api.example.com" })))
+                .request(
+                    index($baseConfig.of({ url: "https://api.example.com" }))
+                )
                 .get()
             expect(result1).toBe(
                 "Connecting to https://api.example.com with default-key"
@@ -187,7 +189,7 @@ describe("Optionals Feature", () => {
 
             // With optional
             const result2 = $app
-                .call(
+                .request(
                     index(
                         $baseConfig.of({ url: "https://api.example.com" }),
                         $optionalConfig.of({ apiKey: "secret-123" })
@@ -200,7 +202,7 @@ describe("Optionals Feature", () => {
         })
 
         it("should propagate optionals through transitive dependencies in types", () => {
-            const $optional = service("optional").spec<string>()
+            const $optional = service("optional").param<string>()
 
             const $child = service("child").module({
                 optionals: [$optional],
@@ -217,25 +219,25 @@ describe("Optionals Feature", () => {
             })
 
             // Should not require optional
-            const result1 = $parent.call({}).get()
+            const result1 = $parent.request({}).get()
             expect(result1).toBe("default")
 
             // Should accept optional
-            const result2 = $parent.call(index($optional.of("custom"))).get()
+            const result2 = $parent.request(index($optional.of("custom"))).get()
             expect(result2).toBe("custom")
 
             // Should accept optional but type-check it if provided
             // @ts-expect-error - invalid optional type
-            const result4 = $parent.call(index($optional.of(55))).get()
+            const result4 = $parent.request(index($optional.of(55))).get()
             expect(result4).toBe(55)
         })
     })
 
     describe("Optionals with Mocks", () => {
         it("should allow mocks to have different optionals", () => {
-            const $required = service("required").spec<string>()
-            const $optional1 = service("optional1").spec<number>()
-            const $optional2 = service("optional2").spec<number>()
+            const $required = service("required").param<string>()
+            const $optional1 = service("optional1").param<number>()
+            const $optional2 = service("optional2").param<number>()
 
             const $base = service("base").module({
                 required: [$required],
@@ -260,7 +262,7 @@ describe("Optionals Feature", () => {
             })
 
             const result = $mocked
-                .call(index($required.of("test"), $optional2.of(21)))
+                .request(index($required.of("test"), $optional2.of(21)))
                 .get()
 
             expect(result).toEqual({
@@ -270,8 +272,8 @@ describe("Optionals Feature", () => {
         })
 
         it("should handle optionals with hire method", () => {
-            const $config = service("config").spec<string>()
-            const $optional = service("optional").spec<number>()
+            const $config = service("config").param<string>()
+            const $optional = service("optional").param<number>()
 
             const $dependency = service("dependency").module({
                 required: [$config],
@@ -293,16 +295,16 @@ describe("Optionals Feature", () => {
 
             const $hired = $main.hire($mockDep)
 
-            const result = $hired.call({}).get()
+            const result = $hired.request({}).get()
             expect(result).toBe(100)
         })
     })
 
     describe("Optionals with Ctx", () => {
         it("should allow overriding optional when it was initially provided", () => {
-            const $config = service("config").spec<string>()
-            const $optional1 = service("optional1").spec<number>()
-            const $optional2 = service("optional2").spec<number>()
+            const $config = service("config").param<string>()
+            const $optional1 = service("optional1").param<number>()
+            const $optional2 = service("optional2").param<number>()
 
             const $module = service("module").module({
                 required: [$config],
@@ -325,7 +327,7 @@ describe("Optionals Feature", () => {
                     })
 
                     const modified = ctx($module)
-                        .call(index($optional2.of(50)))
+                        .request(index($optional2.of(50)))
                         .get()
                     expect(modified).toEqual({
                         config: "initial",
@@ -334,12 +336,12 @@ describe("Optionals Feature", () => {
                 }
             })
 
-            $main.call(index($config.of("initial"))).get()
+            $main.request(index($config.of("initial"))).get()
         })
 
         it("should allow removing optional in ctx", () => {
-            const $config = service("config").spec<string>()
-            const $optional = service("optional").spec<number>()
+            const $config = service("config").param<string>()
+            const $optional = service("optional").param<number>()
 
             const $module = service("module").module({
                 required: [$config],
@@ -360,7 +362,7 @@ describe("Optionals Feature", () => {
                     })
 
                     const reassembled = ctx($module)
-                        .call({ [$optional.tm]: undefined })
+                        .request({ [$optional.tm]: undefined })
                         .get()
                     expect(reassembled).toEqual({
                         config: "test",
@@ -369,14 +371,14 @@ describe("Optionals Feature", () => {
                 }
             })
 
-            $main.call(index($config.of("test"), $optional.of(42))).get()
+            $main.request(index($config.of("test"), $optional.of(42))).get()
         })
     })
 
     describe("Optionals with .hire() Method", () => {
         it("should handle optionals when using .hire() for batch calling", () => {
-            const $optional1 = service("optional1").spec<string>()
-            const $optional2 = service("optional2").spec<string>()
+            const $optional1 = service("optional1").param<string>()
+            const $optional2 = service("optional2").param<string>()
 
             const $module1 = service("module1").module({
                 optionals: [$optional1],
@@ -394,7 +396,7 @@ describe("Optionals Feature", () => {
 
             const batchSupply = $module1
                 .hire($module2)
-                .call(index($optional1.of("test")))
+                .request(index($optional1.of("test")))
 
             expect(batchSupply.get()).toBe("S1: test")
             expect(batchSupply.supplies[$module2.tm]).toBe("S2: none")
@@ -403,7 +405,7 @@ describe("Optionals Feature", () => {
 
     describe("Edge Cases and Error Handling", () => {
         it("should handle empty optionals array", () => {
-            const $config = service("config").spec<string>()
+            const $config = service("config").param<string>()
 
             const $module = service("module").module({
                 required: [$config],
@@ -411,13 +413,13 @@ describe("Optionals Feature", () => {
                 factory: ({ config }) => config
             })
 
-            const result = $module.call(index($config.of("test"))).get()
+            const result = $module.request(index($config.of("test"))).get()
             expect(result).toBe("test")
         })
 
-        it("should handle module with only optionals (no required specs)", () => {
-            const $optional1 = service("optional1").spec<string>()
-            const $optional2 = service("optional2").spec<number>()
+        it("should handle module with only optionals (no required params)", () => {
+            const $optional1 = service("optional1").param<string>()
+            const $optional2 = service("optional2").param<number>()
 
             const $module = service("module").module({
                 optionals: [$optional1, $optional2],
@@ -430,14 +432,14 @@ describe("Optionals Feature", () => {
             })
 
             // Should work with no supplies at all
-            const result1 = $module.call({}).get()
+            const result1 = $module.request({}).get()
             expect(result1).toEqual({
                 opt1: undefined,
                 opt2: undefined
             })
 
             // Should work with some optionals
-            const result2 = $module.call(index($optional1.of("hello"))).get()
+            const result2 = $module.request(index($optional1.of("hello"))).get()
             expect(result2).toEqual({
                 opt1: "hello",
                 opt2: undefined
@@ -445,7 +447,7 @@ describe("Optionals Feature", () => {
 
             // Should work with all optionals
             const result3 = $module
-                .call(index($optional1.of("hello"), $optional2.of(42)))
+                .request(index($optional1.of("hello"), $optional2.of(42)))
                 .get()
             expect(result3).toEqual({
                 opt1: "hello",
@@ -454,7 +456,7 @@ describe("Optionals Feature", () => {
         })
 
         it("should handle warmup function with optionals", () => {
-            const $optional = service("optional").spec<number>()
+            const $optional = service("optional").param<number>()
             let optStore: number | undefined = undefined
 
             const $module = service("module").module({
@@ -467,11 +469,11 @@ describe("Optionals Feature", () => {
                 }
             })
 
-            const result1 = $module.call({}).get()
+            const result1 = $module.request({}).get()
             expect(result1).toBe(10)
             expect(optStore).toEqual(undefined)
 
-            const result2 = $module.call(index($optional.of(5))).get()
+            const result2 = $module.request(index($optional.of(5))).get()
             expect(result2).toBe(5)
             expect(optStore).toEqual(5)
         })
@@ -479,9 +481,9 @@ describe("Optionals Feature", () => {
 
     describe("Real-World Use Cases", () => {
         it("Feature flag example", () => {
-            const $featureFlag = service("featureFlag").spec<boolean>()
+            const $featureFlag = service("featureFlag").param<boolean>()
 
-            const $session = service("session").spec<string>()
+            const $session = service("session").param<string>()
 
             const $optionalFeature = service("optionalFeature").module({
                 required: [$session],
@@ -498,7 +500,7 @@ describe("Optionals Feature", () => {
                     if (enabled) {
                         // Assemble the optional feature with the optional context
                         const feature = ctx($optionalFeature)
-                            .call(index($session.of("userA")))
+                            .request(index($session.of("userA")))
                             .get()
                         return feature
                     }
@@ -508,20 +510,20 @@ describe("Optionals Feature", () => {
             })
 
             // Without optional context
-            const $result1 = $main.call(index($featureFlag.of(true)))
+            const $result1 = $main.request(index($featureFlag.of(true)))
             expect($result1.get()).toEqual("userA")
 
             // With optional context
-            const $result2 = $main.call(index())
+            const $result2 = $main.request(index())
             expect($result2.get()).toEqual(undefined)
         })
 
         it("should support optional authentication/authorization context", () => {
-            const $publicData = service("publicData").spec<{
+            const $publicData = service("publicData").param<{
                 title: string
             }>()
 
-            const $userAuth = service("userAuth").spec<{
+            const $userAuth = service("userAuth").param<{
                 userId: string
                 token: string
             }>()
@@ -546,7 +548,7 @@ describe("Optionals Feature", () => {
             })
 
             // Public access
-            const $publicApi = $api.call(
+            const $publicApi = $api.request(
                 index($publicData.of({ title: "Hello World" }))
             )
             expect($publicApi.get().getPublic()).toBe("Hello World")
@@ -555,7 +557,7 @@ describe("Optionals Feature", () => {
             )
 
             // Authenticated access
-            const $authApi = $api.call(
+            const $authApi = $api.request(
                 index(
                     $publicData.of({ title: "Hello World" }),
                     $userAuth.of({ userId: "user123", token: "abc" })
@@ -568,11 +570,11 @@ describe("Optionals Feature", () => {
         })
 
         it("should support optional caching/performance optimization context", () => {
-            const $config = service("config").spec<{
+            const $config = service("config").param<{
                 apiUrl: string
             }>()
 
-            const $cache = service("cache").spec<Map<string, unknown>>()
+            const $cache = service("cache").param<Map<string, unknown>>()
 
             const $data = service("data").module({
                 required: [$config],
@@ -592,7 +594,7 @@ describe("Optionals Feature", () => {
             })
 
             // Without cache
-            const dataSupplier = $data.call(
+            const dataSupplier = $data.request(
                 index($config.of({ apiUrl: "api.example.com" }))
             )
             expect(dataSupplier.get().fetch("user")).toEqual({
@@ -602,7 +604,7 @@ describe("Optionals Feature", () => {
 
             // With cache
             const cache = new Map<string, unknown>()
-            const dataSupplier2 = $data.call(
+            const dataSupplier2 = $data.request(
                 index(
                     $config.of({ apiUrl: "api.example.com" }),
                     $cache.of(cache)

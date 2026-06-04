@@ -2,22 +2,22 @@ import { Hire } from "#service/hire"
 import { main } from "#service/main"
 import { Mock } from "#service/mock"
 import { type PartialModulePlan } from "#types/internal"
-import type { ToSpecify } from "#types/records"
+import type { Request } from "#types/records"
 import type { ModuleGuard } from "#types/guards"
-import { assertTM, assertModulePlan, assertSpecOptions } from "#validation"
+import { assertTM, assertModulePlan, assertParamOptions } from "#validation"
 import type {
     OriginalService,
     Module,
-    Spec,
+    Param,
     UnknownService,
     Supplier
 } from "#types/public"
 
 export function service<TM extends string>(tm: TM) {
     return {
-        spec<TYPE = any>(opts?: { context?: unknown }): Spec<TM, TYPE> {
+        param<TYPE = any>(opts?: { context?: unknown }): Param<TM, TYPE> {
             assertTM(tm)
-            assertSpecOptions(tm, opts)
+            assertParamOptions(tm, opts)
             return {
                 tm,
                 of<THIS extends UnknownService, VALUE extends TYPE>(
@@ -30,11 +30,11 @@ export function service<TM extends string>(tm: TM) {
                         market: {} as never,
                         service: this,
                         _ctx: (() => null) as never,
-                        _specified: true as const
+                        _requested: true as const
                     } as any
                 },
                 _type: null as unknown as TYPE,
-                _spec: true as const,
+                _param: true as const,
                 _mock: false as const,
                 _context: opts?.context
             }
@@ -57,7 +57,7 @@ export function service<TM extends string>(tm: TM) {
         module<
             TYPE,
             REQUIRED extends OriginalService[] = [],
-            OPTIONALS extends Spec[] = []
+            OPTIONALS extends Param[] = []
         >(
             plan: PartialModulePlan<TYPE, REQUIRED, OPTIONALS>
         ): ModuleGuard<
@@ -66,7 +66,7 @@ export function service<TM extends string>(tm: TM) {
                 TYPE,
                 OPTIONALS[number]["tm"],
                 undefined,
-                ToSpecify<{
+                Request<{
                     required: REQUIRED
                     optionals: OPTIONALS
                 }>,
@@ -88,7 +88,7 @@ export function service<TM extends string>(tm: TM) {
                 TYPE,
                 OPTIONALS[number]["tm"],
                 undefined,
-                ToSpecify<{
+                Request<{
                     required: REQUIRED
                     optionals: OPTIONALS
                 }>,

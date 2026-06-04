@@ -1,5 +1,3 @@
-import type { UnknownService } from "#types/public"
-
 type Id<T, CASE extends "self" | "name"> =
     CASE extends "name" ?
         T extends { name: infer N } ?

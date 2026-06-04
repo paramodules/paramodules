@@ -5,22 +5,22 @@ import type {
     UnknownModule
 } from "#types/public"
 import type { MarketRecord, RegistryRecord } from "#types/records"
-import { isSpecified, isModule, isModuleSupplier, once } from "#utils"
+import { wasRequested, isModule, isModuleSupplier, once } from "#utils"
 import { assertPlainObject } from "#validation"
 
-export function call<THIS extends UnknownModule>(
+export function request<THIS extends UnknownModule>(
     this: THIS,
-    specified: THIS["_toSpecifyType"]
+    req: THIS["_reqType"]
 ) {
-    assertPlainObject("specified", specified)
+    assertPlainObject("request", req)
 
-    // Stores the known supplies that can be preserved to optimize reassemble
+    // Stores the known suppliers that can be preserved to optimize nested requests
     const preserved: MarketRecord<UnknownService> = {}
 
     for (const [name, supplier] of Object.entries(this._caller?.market ?? {})) {
         // Do not preserve supplies from newly hired
         // or newly specified
-        if (this._hired.some((hname) => hname === name) || name in specified) {
+        if (this._hired.some((hname) => hname === name) || name in req) {
             continue
         }
 
@@ -30,11 +30,10 @@ export function call<THIS extends UnknownModule>(
         if (
             supplier &&
             isModuleSupplier(supplier) &&
-            !isSpecified(supplier) &&
+            !wasRequested(supplier) &&
             supplier.service._team.some(
                 (s: UnknownService) =>
-                    s.tm in specified ||
-                    this._hired.some((hname) => hname === s.tm)
+                    s.tm in req || this._hired.some((hname) => hname === s.tm)
             )
         ) {
             continue
@@ -44,7 +43,7 @@ export function call<THIS extends UnknownModule>(
     }
 
     const definedSpecified: MarketRecord<UnknownService> = Object.fromEntries(
-        Object.entries(specified).filter(
+        Object.entries(req).filter(
             (entry): entry is [string, Supplier<UnknownService>] =>
                 entry[1] !== undefined
         )
@@ -88,7 +87,7 @@ function warmup(supplier: ModuleSupplier<UnknownModule>) {
 }
 
 export function provision<THIS extends UnknownModule>(this: THIS) {
-    const supplier = call.call(this, {})
+    const supplier = request.call(this, {})
     return {
         ...this,
         _caller: {
