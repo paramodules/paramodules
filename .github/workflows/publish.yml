@@ -33,7 +33,7 @@ jobs:
         if: contains(github.event.release.tag_name, 'docs') == false
         environment:
             name: npm-publish
-            url: https://www.npmjs.com/package/@marketjs/trademarks
+            url: https://www.npmjs.com/package/paramodules
         runs-on: ubuntu-latest
         permissions:
             contents: read # Required for checkout
@@ -52,17 +52,17 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
                   package-manager-cache: false
 
-            - name: Download @marketjs/trademarks build artifacts
+            - name: Download paramodules build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: "@marketjs/trademarks-build"
-                  path: ./packages/@marketjs/trademarks/dist
+                  name: "paramodules-build"
+                  path: ./packages/paramodules/dist
 
-            - name: Download @marketjs/react build artifacts
+            - name: Download @paramodules/react build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: "@marketjs/react-build"
-                  path: ./packages/@marketjs/react/main/dist
+                  name: "@paramodules/react-build"
+                  path: ./packages/@paramodules/react/main/dist
 
             - name: Set version from release tag
               run: |
@@ -71,90 +71,90 @@ jobs:
                   echo "Setting version to: $VERSION"
                   echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-            - name: Set version for @marketjs/trademarks
-              working-directory: ./packages/@marketjs/trademarks
+            - name: Set version for paramodules
+              working-directory: ./packages/paramodules
               run: |
                   npm version $VERSION --no-git-tag-version
-                  echo "@marketjs/trademarks package.json version is now: $(cat package.json | jq -r .version)"
+                  echo "paramodules package.json version is now: $(cat package.json | jq -r .version)"
 
-            - name: Set version for @marketjs/react
+            - name: Set version for @paramodules/react
               working-directory: ./packages/@marketjs/react/main
               run: |
                   npm version $VERSION --no-git-tag-version
-                  echo "@marketjs/react package.json version is now: $(cat package.json | jq -r .version)"
+                  echo "@paramodules/react package.json version is now: $(cat package.json | jq -r .version)"
 
             - name: Install dependencies to resolve workspace:^
               working-directory: .
               run: pnpm install
 
-            - name: Dry publish @marketjs/trademarks
+            - name: Dry publish paramodules
               if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/@marketjs/trademarks
+              working-directory: ./packages/paramodules
               run: |
                   pnpm publish --tag dry --dry-run --no-git-checks
 
-            - name: Dry publish @marketjs/react
+            - name: Dry publish @paramodules/react
               if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/@marketjs/react/main
+              working-directory: ./packages/@paramodules/react/main
               run: |
                   pnpm publish --tag dry --dry-run --no-git-checks
 
-            - name: Publish @marketjs/trademarks to Canary
+            - name: Publish paramodules to Canary
               if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/@marketjs/trademarks
+              working-directory: ./packages/paramodules
               run: |
                   pnpm publish --tag canary --no-git-checks
 
-            - name: Publish @marketjs/react to Canary
+            - name: Publish @paramodules/react to Canary
               if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/@marketjs/react/main
+              working-directory: ./packages/@paramodules/react/main
               run: |
                   pnpm publish --tag canary --no-git-checks
 
-            - name: Publish @marketjs/trademarks to Alpha
+            - name: Publish paramodules to Alpha
               if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/@marketjs/trademarks
+              working-directory: ./packages/paramodules
               run: |
                   pnpm publish --tag alpha --no-git-checks
 
-            - name: Publish @marketjs/react to Alpha
+              - name: Publish @paramodules/react to Alpha
               if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/@marketjs/react/main
+              working-directory: ./packages/@paramodules/react/main
               run: |
                   pnpm publish --tag alpha --no-git-checks
 
-            - name: Publish @marketjs/trademarks to Beta
+            - name: Publish paramodules to Beta
               if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/@marketjs/trademarks
+              working-directory: ./packages/paramodules
               run: |
                   pnpm publish --tag beta --no-git-checks
 
-            - name: Publish @marketjs/react to Beta
+            - name: Publish @paramodules/react to Beta
               if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/@marketjs/react/main
+              working-directory: ./packages/@paramodules/react/main
               run: |
                   pnpm publish --tag beta --no-git-checks
 
-            - name: Publish @marketjs/trademarks to RC
+            - name: Publish paramodules to RC
               if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/@marketjs/trademarks
+              working-directory: ./packages/paramodules
               run: |
                   pnpm publish --tag rc --no-git-checks
 
-            - name: Publish @marketjs/react to RC
+            - name: Publish @paramodules/react to RC
               if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/@marketjs/react/main
+              working-directory: ./packages/@paramodules/react/main
               run: |
                   pnpm publish --tag rc --no-git-checks
 
-            - name: Publish @marketjs/trademarks to Latest
+            - name: Publish paramodules to Latest
               if: contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/@marketjs/trademarks
+              working-directory: ./packages/paramodules
               run: |
                   pnpm publish --tag latest --no-git-checks
 
-            - name: Publish @marketjs/react to Latest
+            - name: Publish @paramodules/react to Latest
               if: contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/@marketjs/react/main
+              working-directory: ./packages/@paramodules/react/main
               run: |
                   pnpm publish --tag latest --no-git-checks

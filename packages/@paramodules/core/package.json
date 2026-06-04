@@ -1,5 +1,5 @@
 {
-    "name": "@paramodules/core",
+    "name": "paramodules",
     "type": "module",
     "version": "0.0.0",
     "description": "Stateless, parametrizable runtime modules — type-inferred primitives for cascading full-stack application architecture.",

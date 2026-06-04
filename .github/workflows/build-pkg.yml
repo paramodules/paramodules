@@ -25,21 +25,21 @@ jobs:
 
             - name: Build packages
               run: |
-                  pnpm run build --filter=@marketjs/trademarks
-                  pnpm run build --filter=@marketjs/react
+                  pnpm run build --filter=paramodules
+                  pnpm run build --filter=@paramodules/react
 
-            - name: Upload @marketjs/trademarks build artifacts
+            - name: Upload paramodules build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: "@marketjs/trademarks-build"
+                  name: "paramodules-build"
                   path: |
-                      packages/@marketjs/trademarks/dist
+                      packages/paramodules/dist
 
-            - name: Upload @marketjs/react build artifacts
+            - name: Upload @paramodules/react build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: "@marketjs/react-build"
+                  name: "@paramodules/react-build"
                   path: |
-                      packages/@marketjs/react/main/dist
+                      packages/@paramodules/react/main/dist
