@@ -1,90 +1,118 @@
-import { useContext, type Context, type ReactNode } from "react"
-import type { Supply, UnknownService, UnknownTM } from "@marketjs/trademarks"
+import { useContext, type Context, type JSX, type ReactNode } from "react"
+import type { Ctx, Supplier, UnknownModule, UnknownService } from "paramodules"
 import { createContext as createReactContext } from "react"
 
-export function createContext() {
-    return createReactContext<unknown>(undefined)
+type MaybeWithContextSupplier<S extends UnknownService> = Omit<
+    Supplier<S>,
+    "service"
+> & {
+    service: MaybeWithContext<S>
 }
 
-/**
- * Reads a service's required and optional dependencies from React Context.
- *
- * Iterates `service._required` then `service._optionals` in declaration
- * order, calling `useContext` once for each entry that carries a `_context`.
- * Entries without `_context` are omitted from the returned object — they
- * must be accessed via the factory's deps argument instead.
- *
- * Each Context falls back to whatever default the user passed to
- * `createContext(...)` when defining the spec, so callers see typed values
- * even before any `Provide` is mounted above.
- */
-export function useDeps<S extends UnknownService>(service: S): S["_deps"] {
-    const deps: Record<string, unknown> = {}
+type MaybeWithContext<S extends UnknownService> = S & {
+    _context?: Context<MaybeWithContextSupplier<S> | undefined>
+}
 
-    for (const dep of service._required) {
-        const ctx = getContext(dep)
-        if (!ctx) continue
+export function withContext<S extends UnknownService>(service: S) {
+    return {
+        ...service,
+        _context: createReactContext<MaybeWithContextSupplier<S> | undefined>(
+            undefined
+        )
+    }
+}
+
+type MaybeWithContextMarketRecord = Record<
+    string,
+    MaybeWithContextSupplier<UnknownService>
+>
+
+export function useSupplies<
+    M extends MaybeWithContext<
+        UnknownModule & {
+            _required: MaybeWithContext<UnknownService>[]
+            _optionals: MaybeWithContext<UnknownService>[]
+        }
+    >
+>(module: M, initSupplies: Record<string, unknown>): M["_suppliesType"] {
+    const supplies: Record<string, unknown> = {}
+
+    for (const service of [...module._required, ...module._optionals]) {
+        if (!service._context) {
+            supplies[service.tm] = initSupplies[service.tm]
+            continue
+        }
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        deps[dep.name] = useContext(ctx)
+        const context = useContext(service._context)
+        supplies[service.tm] = context?.get() ?? initSupplies[service.tm]
     }
 
-    for (const dep of service._optionals) {
-        const ctx = getContext(dep)
-        if (!ctx) continue
+    return supplies as M["_suppliesType"]
+}
+
+export function useProvide<M extends MaybeWithContext<UnknownModule>>(
+    module: M,
+    initCtx: Ctx<M>
+) {
+    const initCallerMarket = initCtx(module)._caller.market
+
+    const callerMarket = Object.entries(
+        initCallerMarket as MaybeWithContextMarketRecord
+    ).reduce((acc, [tm, supplier]) => {
+        const context = supplier.service._context
+        if (!context) {
+            acc[tm] = supplier
+            return acc
+        }
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        deps[dep.name] = useContext(ctx)
+        acc[tm] = useContext(context) ?? supplier
+        return acc
+    }, {} as MaybeWithContextMarketRecord)
+
+    return function provide<M2 extends MaybeWithContext<UnknownModule>, REQ>(
+        module2: M2 & { _reqType: REQ }
+    ) {
+        const initCtxModule2 = initCtx(module2)
+        const ctxModule2 = {
+            ...initCtxModule2,
+            _caller: {
+                ...initCtxModule2._caller,
+                market: callerMarket
+            }
+        }
+
+        return {
+            with(req: typeof initCtxModule2._reqType, children: ReactNode) {
+                const supplier2 = ctxModule2.request(req)
+                const providers: Array<
+                    [Context<any>, MaybeWithContextSupplier<UnknownService>]
+                > = []
+
+                const supplier2Context = supplier2.service._context
+                if (supplier2Context) {
+                    providers.push([
+                        supplier2Context,
+                        supplier2 as MaybeWithContextSupplier<UnknownService>
+                    ])
+                }
+
+                for (const subSupplier of Object.values(
+                    supplier2.market
+                ) as MaybeWithContextSupplier<UnknownService>[]) {
+                    const context = subSupplier.service._context
+                    if (!context) continue
+                    providers.push([context, subSupplier])
+                }
+
+                return providers.reduceRight<ReactNode>(
+                    (tree, [context, value]) => (
+                        <context.Provider value={value}>
+                            {tree}
+                        </context.Provider>
+                    ),
+                    children
+                )
+            }
+        }
     }
-
-    return deps as S["_deps"]
-}
-
-/**
- * Transforms an already-built `Supply` into a tree of React
- * `Context.Provider`s wrapping the result of `children(unpacked)`.
- *
- * Walks `supply.market` (plus the top supply itself) and stacks one
- * `Context.Provider` per resolved entry that carries a `_context`. Entries
- * without `_context` are silently skipped.
- *
- * `children` is a render callback that receives the unpacked top supply,
- * letting callers compose without a separate `supply.unpack()` line. If the
- * unpacked value isn't needed (e.g. building a sub-supply from inside its
- * own component), just ignore the argument: `{() => <div>...</div>}`.
- *
- * Provide does no resolution of its own — call `service.buy(...)` (or
- * `ctx(service).buy(...)` for a contextualized sub-build) outside and pass
- * the resulting supply in. Spec defaults come from whatever each
- * `_context` was created with.
- */
-export function Provide<S extends UnknownService>({
-    supply,
-    children
-}: {
-    supply: Supply<S>
-    children: (unpacked: S["_type"]) => ReactNode
-}): ReactNode {
-    const providers: Array<[Context<unknown>, unknown]> = []
-    const unpacked = supply.unpack()
-
-    const topContext = getContext(supply.tm)
-    if (topContext) {
-        providers.push([topContext, unpacked])
-    }
-
-    for (const subSupply of Object.values(supply.market)) {
-        const ctx = getContext(subSupply.tm)
-        if (!ctx) continue
-        providers.push([ctx, subSupply.unpack()])
-    }
-
-    return providers.reduceRight<ReactNode>(
-        (tree, [Ctx, value]) => (
-            <Ctx.Provider value={value}>{tree}</Ctx.Provider>
-        ),
-        children(unpacked)
-    )
-}
-
-function getContext(tm: UnknownTM): Context<unknown> | undefined {
-    return tm._context as Context<unknown> | undefined
 }

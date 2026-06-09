@@ -4,7 +4,7 @@ import { Mock } from "#service/mock"
 import { type PartialModulePlan } from "#types/internal"
 import type { Request } from "#types/records"
 import type { ModuleGuard } from "#types/guards"
-import { assertTM, assertModulePlan, assertParamOptions } from "#validation"
+import { assertTM, assertModulePlan } from "#validation"
 import type {
     OriginalService,
     Module,
@@ -15,9 +15,8 @@ import type {
 
 export function service<TM extends string>(tm: TM) {
     return {
-        param<TYPE = any>(opts?: { context?: unknown }): Param<TM, TYPE> {
+        param<TYPE = any>(): Param<TM, TYPE> {
             assertTM(tm)
-            assertParamOptions(tm, opts)
             return {
                 tm,
                 of<THIS extends UnknownService, VALUE extends TYPE>(
@@ -35,8 +34,7 @@ export function service<TM extends string>(tm: TM) {
                 },
                 _type: null as unknown as TYPE,
                 _param: true as const,
-                _mock: false as const,
-                _context: opts?.context
+                _mock: false as const
             }
         },
         /**

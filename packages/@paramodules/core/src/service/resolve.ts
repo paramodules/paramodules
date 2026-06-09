@@ -1,23 +1,31 @@
-import type { Ctx, UnknownModulePlan } from "#types/internal"
 import type {
+    Ctx,
     UnknownService,
     Supplier,
     UnknownModule,
     ModuleSupplier
 } from "#types/public"
-import type { MarketPlan, RegistryRecord } from "#types/records"
+import type { MarketPlan, RegistryRecord, SuppliesPlan } from "#types/records"
 import { isModule, once, type Merge } from "#utils"
 
 export function Ctx<
     SUPPLIER extends Merge<
         ModuleSupplier<UnknownModule>,
-        { market: MarketPlan<PLAN> }
+        {
+            market: MarketPlan<{
+                required: Pick<MODULE, "_required">["_required"]
+                optionals: Pick<MODULE, "_optionals">["_optionals"]
+            }>
+        }
     >,
-    PLAN extends Pick<UnknownModulePlan, "required" | "optionals">
->(callerSupplier: SUPPLIER, callerPlan: PLAN): Ctx<PLAN> {
-    return <TM extends UnknownService>(tm: TM): any => {
+    MODULE extends Pick<UnknownModule, "_required" | "_optionals">
+>(callerSupplier: SUPPLIER, callerModule: MODULE): Ctx<MODULE> {
+    return <SERVICE extends Pick<UnknownService, "tm">>(
+        service: SERVICE
+    ): any => {
         const actual =
-            callerPlan.required.find((member) => member.tm === tm.tm) ?? tm
+            callerModule._required.find((member) => member.tm === service.tm) ??
+            service
 
         if (!isModule(actual)) {
             return actual
@@ -71,8 +79,14 @@ export function _resolve<THIS extends UnknownModule>(
             return acc
         },
         {
-            supplies: {},
-            market: {}
+            supplies: {} as SuppliesPlan<{
+                required: THIS["_required"]
+                optionals: THIS["_optionals"]
+            }>,
+            market: {} as MarketPlan<{
+                required: THIS["_required"]
+                optionals: THIS["_optionals"]
+            }>
         }
     )
 
@@ -85,13 +99,7 @@ export function _resolve<THIS extends UnknownModule>(
                     throw new Error(`Dependency ${service.tm} is not available`)
                 }
             })
-            const value = this._factory(
-                supplies,
-                Ctx(supplier, {
-                    required: this._required,
-                    optionals: this._optionals
-                })
-            )
+            const value = this._factory(supplies, Ctx(supplier, this))
             if (this._warmup) {
                 this._warmup(value, supplies)
             }
@@ -100,11 +108,8 @@ export function _resolve<THIS extends UnknownModule>(
         market,
         supplies,
         service: this,
-        _ctx<TM extends UnknownService>(tm: TM) {
-            return Ctx(supplier, {
-                required: this.service._required,
-                optionals: this.service._optionals
-            })(tm)
+        _ctx<SERVICE extends UnknownService>(service: SERVICE) {
+            return Ctx(supplier, this.service)(service)
         },
         _requested: false as const
     }

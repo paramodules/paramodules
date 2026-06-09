@@ -1,5 +1,5 @@
 {
-    "extends": "@marketjs/config.typescript",
+    "extends": "@paramodules/config.typescript",
     "compilerOptions": {
         "target": "ES2020",
         "lib": ["ES2023", "DOM"],

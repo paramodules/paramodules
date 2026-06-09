@@ -9,6 +9,7 @@ import type {
 import type { UnionToIntersection } from "#utils"
 
 export type MaybeFn<A extends any[], R> = R | ((...args: A) => R)
+
 /**
  * A generic map of suppliers
  * @public

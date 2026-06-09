@@ -40,7 +40,7 @@ export function main<
     >
 
     return {
-        ...service(tm).param<TYPE>({ context: plan.context }),
+        ...service(tm).param<TYPE>(),
         request: request,
         provision,
         _factory: plan.factory,

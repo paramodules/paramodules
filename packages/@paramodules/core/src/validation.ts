@@ -127,21 +127,6 @@ export function assertModulePlan(
     }
 }
 
-/**
- * Validates the optional opts object passed to `tm(name).param(opts)`.
- * @param name - Param name, used in error messages
- * @param opts - The options object to validate, or undefined
- * @internal
- * @throws TypeError if opts is not a plain object
- */
-export function assertParamOptions(
-    name: string,
-    opts: { context?: unknown } | undefined
-) {
-    if (opts === undefined) return
-    assertPlainObject(name, opts)
-}
-
 export function assertParam(service: unknown): asserts service is Param {
     assertHasProperty("noname", service, "tm")
     assertString("noname", service.tm)

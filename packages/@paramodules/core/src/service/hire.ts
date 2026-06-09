@@ -98,8 +98,8 @@ export function Hire() {
                 market: {
                     ...this._caller?.market,
                     ...hired
-                        .map((service) => service._caller?.market ?? {})
-                        .reduce((acc, known) => ({ ...acc, ...known }), {})
+                        .map((module) => module._caller?.market ?? {})
+                        .reduce((acc, market) => ({ ...acc, ...market }), {})
                 }
             },
             _oldReqType: _reqType,

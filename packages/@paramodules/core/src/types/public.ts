@@ -1,11 +1,12 @@
 import type { ModuleGuard } from "#types/guards"
-import type { Service, PartialModulePlan, Ctx } from "#types/internal"
+import type { Service, PartialModulePlan } from "#types/internal"
 import type {
     Market,
-    MarketRecord,
-    RegistryRecord,
     Supplies,
-    Request
+    Request,
+    MarketPlan,
+    MarketRecord,
+    RegistryRecord
 } from "#types/records"
 import type { MergeStringTuples } from "#types/utils"
 import type { Merge } from "#utils"
@@ -21,7 +22,7 @@ export interface Module<
     NAME extends string,
     TYPE,
     OPTIONAL_KEYS extends string,
-    CALLER extends ModuleSupplier<UnknownModule> | undefined,
+    CALLER extends Pick<ModuleSupplier<UnknownModule>, "market"> | undefined,
     REQUEST extends Partial<MarketRecord<UnknownService>>,
     HIRED extends string[],
     MOCK extends boolean = boolean
@@ -168,3 +169,46 @@ export type SpecSupplier<SPEC extends Param> = {
 export type Supplier<SERVICE extends UnknownService> =
     SERVICE extends Param ? SpecSupplier<SERVICE>
     :   ModuleSupplier<Extract<SERVICE, UnknownModule>>
+
+/**
+ * ctx transforms modules into contextualized modules that can be called again with new specs.
+ * This enables dynamic dependency injection within a module's factory.
+ * @typeParam MODULE - The current module providing context
+ * @returns A function that takes a module and returns it with a contextualized call method
+ * @public
+ */
+export type Ctx<
+    CALLER extends Pick<UnknownModule, "_optionals" | "_required">
+> = <SERVICE extends UnknownService>(
+    service: SERVICE & UnknownService
+) => SERVICE extends UnknownModule ?
+    Merge<
+        SERVICE,
+        {
+            _caller: Merge<
+                ModuleSupplier<UnknownModule>,
+                {
+                    market: MarketPlan<{
+                        required: CALLER["_required"]
+                        optionals: CALLER["_optionals"]
+                    }>
+                }
+            >
+            _reqType: Omit<
+                SERVICE["_reqType"],
+                keyof Request<{
+                    required: CALLER["_required"]
+                    optionals: CALLER["_optionals"]
+                }>
+            > &
+                Partial<
+                    Request<{
+                        required: CALLER["_required"]
+                        optionals: CALLER["_optionals"]
+                    }>
+                >
+        }
+    >
+:   SERVICE & Param // simply returns the service itself if it's a request service (noop)
+
+export type { MarketRecord, RegistryRecord, Request }

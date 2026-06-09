@@ -91,13 +91,13 @@ export function sleep(ms: number) {
 }
 
 /**
- * Type guard to check if a service is amodule.
+ * Type guard to check if a service is a module.
  * @param service - The service to check
  * @returns True if the service is an app service, false if it's a request service
  * @internal
  */
 export function isModule<MODULE extends UnknownModule>(
-    service: MODULE | UnknownService
+    service: MODULE | Pick<UnknownService, "tm">
 ): service is MODULE {
     return "_module" in service && service._module === true
 }

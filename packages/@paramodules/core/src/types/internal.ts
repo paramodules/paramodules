@@ -1,13 +1,11 @@
 import type {
     OriginalService as OriginalService,
     Param,
-    UnknownModule,
     UnknownService,
     Supplier,
-    ModuleSupplier
+    Ctx
 } from "#types/public"
-import type { SuppliesPlan, MarketPlan, Request } from "#types/records"
-import type { Merge } from "#utils"
+import type { SuppliesPlan } from "#types/records"
 
 export interface Service<TM extends string = string, TYPE = unknown> {
     tm: TM
@@ -16,13 +14,6 @@ export interface Service<TM extends string = string, TYPE = unknown> {
         value: VALUE
     ) => Supplier<THIS>
     _type: TYPE
-    /**
-     * Opaque value attached at trademark creation by an adapter (e.g. a React
-     * Context, a Vue inject key, an AsyncLocalStorage instance). Core
-     * trademarks does not interpret this field — it just stores it for the
-     * adapter to consume.
-     */
-    _context?: unknown
 }
 
 export type Factory<
@@ -35,8 +26,8 @@ export type Factory<
         optionals: OPTIONALS
     }>,
     ctx: Ctx<{
-        required: REQUIRED
-        optionals: OPTIONALS
+        _required: REQUIRED
+        _optionals: OPTIONALS
     }>
 ) => TYPE
 
@@ -77,28 +68,3 @@ export type ModulePlan<
 }
 
 export type UnknownModulePlan = ModulePlan<unknown, OriginalService[], Param[]>
-
-/**
- * ctx transforms modules into contextualized modules that can be called again with new specs.
- * This enables dynamic dependency injection within a module's factory.
- * @typeParam MODULE - The current module providing context
- * @returns A function that takes a module and returns it with a contextualized call method
- * @public
- */
-export type Ctx<
-    CALLER_PLAN extends Pick<UnknownModulePlan, "optionals" | "required">
-> = <SERVICE extends UnknownService>(
-    service: SERVICE & UnknownService
-) => SERVICE extends UnknownModule ?
-    Merge<
-        SERVICE,
-        {
-            _caller: Merge<
-                ModuleSupplier<UnknownModule>,
-                { market: MarketPlan<CALLER_PLAN> }
-            >
-            _reqType: Omit<SERVICE["_reqType"], keyof Request<CALLER_PLAN>> &
-                Partial<Request<CALLER_PLAN>>
-        }
-    >
-:   SERVICE & Param // simply returns the service itself if it's a request service (noop)
