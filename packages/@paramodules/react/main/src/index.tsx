@@ -1,6 +1,24 @@
-import { useContext, type Context, type JSX, type ReactNode } from "react"
-import type { Ctx, Supplier, UnknownModule, UnknownService } from "paramodules"
-import { createContext as createReactContext } from "react"
+import {
+    use,
+    createContext as createReactContext,
+    type Context,
+    type ReactNode
+} from "react"
+import {
+    type Param,
+    type Supplier,
+    type UnknownModule,
+    type UnknownService,
+    service as coreService
+} from "paramodules"
+
+type WithContext<P extends Param> = P & {
+    _context: Context<Supplier<P> | undefined>
+}
+
+type MaybeWithContext<S extends UnknownService> = S & {
+    _context?: Context<Supplier<S> | undefined>
+}
 
 type MaybeWithContextSupplier<S extends UnknownService> = Omit<
     Supplier<S>,
@@ -9,31 +27,40 @@ type MaybeWithContextSupplier<S extends UnknownService> = Omit<
     service: MaybeWithContext<S>
 }
 
-type MaybeWithContext<S extends UnknownService> = S & {
-    _context?: Context<MaybeWithContextSupplier<S> | undefined>
-}
+type Prettify<T> = { [K in keyof T]: T[K] }
 
-export function withContext<S extends UnknownService>(service: S) {
+/** Param suppliers accepted by {@link ParamsProvider} for a subtree (all optional). */
+export type Params<M extends UnknownModule> = Prettify<{
+    [K in keyof M["_reqType"] as NonNullable<M["_reqType"][K]> extends (
+        Supplier<infer SERVICE>
+    ) ?
+        SERVICE extends Param ?
+            K
+        :   never
+    :   never]?: M["_reqType"][K]
+}>
+
+export function withContext<P extends Param>(param: P): WithContext<P> {
     return {
-        ...service,
-        _context: createReactContext<MaybeWithContextSupplier<S> | undefined>(
-            undefined
-        )
+        ...param,
+        _context: createReactContext<Supplier<P> | undefined>(undefined)
     }
 }
 
-type MaybeWithContextMarketRecord = Record<
-    string,
-    MaybeWithContextSupplier<UnknownService>
->
+export function service<TM extends string>(tm: TM) {
+    return {
+        ...coreService(tm),
+        param<TYPE = any>() {
+            return withContext(coreService(tm).param<TYPE>())
+        }
+    }
+}
 
 export function useSupplies<
-    M extends MaybeWithContext<
-        UnknownModule & {
-            _required: MaybeWithContext<UnknownService>[]
-            _optionals: MaybeWithContext<UnknownService>[]
-        }
-    >
+    M extends UnknownModule & {
+        _required: MaybeWithContext<UnknownService>[]
+        _optionals: MaybeWithContext<UnknownService>[]
+    }
 >(module: M, initSupplies: Record<string, unknown>): M["_suppliesType"] {
     const supplies: Record<string, unknown> = {}
 
@@ -42,77 +69,42 @@ export function useSupplies<
             supplies[service.tm] = initSupplies[service.tm]
             continue
         }
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const context = useContext(service._context)
+        const context = use(service._context)
         supplies[service.tm] = context?.get() ?? initSupplies[service.tm]
     }
 
     return supplies as M["_suppliesType"]
 }
 
-export function useProvide<M extends MaybeWithContext<UnknownModule>>(
-    module: M,
-    initCtx: Ctx<M>
-) {
-    const initCallerMarket = initCtx(module)._caller.market
+/**
+ * Opens a param scope for a subtree. The `for` module is used only to type
+ * `value` (which params this subtree accepts) — its value is never resolved.
+ * Each provided param is broadcast through its React context to descendants
+ * that read it via {@link useSupplies}.
+ */
+export function ParamsProvider<M extends UnknownModule>({
+    params,
+    children
+}: {
+    for: M
+    params: Params<M>
+    children: ReactNode
+}): ReactNode {
+    const providers: Array<[Context<any>, unknown]> = []
 
-    const callerMarket = Object.entries(
-        initCallerMarket as MaybeWithContextMarketRecord
-    ).reduce((acc, [tm, supplier]) => {
-        const context = supplier.service._context
-        if (!context) {
-            acc[tm] = supplier
-            return acc
-        }
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        acc[tm] = useContext(context) ?? supplier
-        return acc
-    }, {} as MaybeWithContextMarketRecord)
-
-    return function provide<M2 extends MaybeWithContext<UnknownModule>, REQ>(
-        module2: M2 & { _reqType: REQ }
-    ) {
-        const initCtxModule2 = initCtx(module2)
-        const ctxModule2 = {
-            ...initCtxModule2,
-            _caller: {
-                ...initCtxModule2._caller,
-                market: callerMarket
-            }
-        }
-
-        return {
-            with(req: typeof initCtxModule2._reqType, children: ReactNode) {
-                const supplier2 = ctxModule2.request(req)
-                const providers: Array<
-                    [Context<any>, MaybeWithContextSupplier<UnknownService>]
-                > = []
-
-                const supplier2Context = supplier2.service._context
-                if (supplier2Context) {
-                    providers.push([
-                        supplier2Context,
-                        supplier2 as MaybeWithContextSupplier<UnknownService>
-                    ])
-                }
-
-                for (const subSupplier of Object.values(
-                    supplier2.market
-                ) as MaybeWithContextSupplier<UnknownService>[]) {
-                    const context = subSupplier.service._context
-                    if (!context) continue
-                    providers.push([context, subSupplier])
-                }
-
-                return providers.reduceRight<ReactNode>(
-                    (tree, [context, value]) => (
-                        <context.Provider value={value}>
-                            {tree}
-                        </context.Provider>
-                    ),
-                    children
-                )
-            }
-        }
+    for (const value of Object.values(params as Record<string, unknown>)) {
+        const supplier = value as
+            | MaybeWithContextSupplier<UnknownService>
+            | undefined
+        const context = supplier?.service._context
+        if (!context) continue
+        providers.push([context, supplier])
     }
+
+    return providers.reduceRight<ReactNode>(
+        (tree, [context, supplier]) => (
+            <context.Provider value={supplier}>{tree}</context.Provider>
+        ),
+        children
+    )
 }

@@ -1,91 +1,49 @@
-import { createContext, useMemo, useState, type ReactNode } from "react"
-import {
-    $commentsQuery,
-    $userQuery,
-    $usersQuery,
-    type Comment as CommentType,
-    type Post as PostType,
-    type User
-} from "@/api"
+import { Suspense, useState } from "react"
+import { type User } from "@/api"
+import { ParamsProvider, service, useSupplies } from "@paramodules/react"
 import { $Comment } from "@/components/comment"
-import { tm } from "@marketjs/trademarks"
-import { req, type Session } from "@/req"
-import { useQuery } from "@tanstack/react-query"
 import { $SelectSession } from "@/components/session"
-import { Provide, useDeps } from "@marketjs/react"
+import { $currentPost, $userStateContext } from "@/context"
+import { index } from "paramodules"
 
-export const $Post = tm("Post").service({
-    required: [
-        $usersQuery,
-        $commentsQuery,
-        $userQuery,
-        req.$defaultUser,
-        $Comment,
-        $SelectSession
-    ],
-    optionals: [req.$session, req.$post],
-    context: createContext<(props: { post: PostType }) => ReactNode>(() => null),
-    factory: (_, ctx) =>
-        function Post({ post }: { post: PostType }) {
-            const {
-                userQuery,
-                defaultUser,
-                session,
-                usersQuery,
-                commentsQuery,
-                Comment,
-                SelectSession
-            } = useDeps($Post)
-            const outerSessionUser = session?.[0]
-            const { data: defaultSession } = useQuery(userQuery(defaultUser))
-            const { data: users } = useQuery(usersQuery)
-            const { data: comments } = useQuery(commentsQuery(post.id))
+export const $Post = service("Post").module({
+    required: [$currentPost, $SelectSession, $Comment, $userStateContext],
+    factory: (initSupplies) =>
+        function Post() {
+            const { currentPost, SelectSession, Comment, userStateContext } =
+                useSupplies($Post, initSupplies)
 
-            const [postSession, setPostSession] = useState<User | undefined>(
-                undefined
-            )
-
-            const sessionValue = useMemo<Session>(
-                () => [
-                    postSession ?? outerSessionUser ?? defaultSession,
-                    setPostSession
-                ],
-                [postSession, outerSessionUser, defaultSession]
-            )
-
-            if (!users || !comments) {
-                return <div>Loading users or comments...</div>
-            }
+            const [postUserState, setPostUserState] = useState<
+                User | undefined
+            >(undefined)
 
             return (
-                <Provide
-                    supply={ctx($Comment)
-                        .hire($SelectSession)
-                        .buy({
-                            session: req.$session.of(sessionValue),
-                            post: req.$post.of(post)
-                        })}
-                >
-                    {() => (
-                        <div className="border-2 border-purple-500 rounded-lg p-4 bg-gray-800">
-                            <div className="flex justify-between items-center mb-3">
-                                <h3 className="text-lg font-semibold text-purple-300">
-                                    📝 Post: {post.id}
-                                </h3>
-                                <SelectSession />
-                            </div>
-
-                            <div className="space-y-3">
-                                {comments.map((comment: CommentType) => (
-                                    <Comment
-                                        key={comment.id}
-                                        comment={comment}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                <ParamsProvider
+                    for={$Post.hire($SelectSession)}
+                    params={index(
+                        $userStateContext.of([
+                            postUserState ?? userStateContext[0],
+                            setPostUserState
+                        ])
                     )}
-                </Provide>
+                >
+                    <div className="border-2 border-purple-500 rounded-lg p-4 bg-gray-800">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-lg font-semibold text-purple-300">
+                                📝 Post: {currentPost?.id}
+                            </h3>
+                            <Suspense fallback={<div>Loading users...</div>}>
+                                <SelectSession />
+                            </Suspense>
+                        </div>
+
+                        <div className="space-y-3">
+                            {currentPost?.comments.map((comment) => (
+                                <Comment key={comment.id} comment={comment} />
+                            ))}
+                        </div>
+                    </div>
+                </ParamsProvider>
             )
         }
 })

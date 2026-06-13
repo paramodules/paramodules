@@ -52,10 +52,17 @@ type RequestBase<
         required: UnknownService[]
     }
 > = {
-    [SERVICE in Extract<
-        PLAN["required"][number],
-        Param
-    > as SERVICE["tm"]]: Supplier<SERVICE>
+    [SERVICE in Extract<PLAN["required"][number], Param> as [
+        SERVICE["_init"]
+    ] extends [never] ?
+        SERVICE["tm"]
+    :   never]: Supplier<SERVICE>
+} & {
+    [SERVICE in Extract<PLAN["required"][number], Param> as [
+        SERVICE["_init"]
+    ] extends [never] ?
+        never
+    :   SERVICE["tm"]]?: Supplier<SERVICE>
 } & {
     [OPTIONAL in
         | PLAN["optionals"][number]
@@ -96,7 +103,7 @@ export type Request<
         }
 
 export type Market<MODULE extends UnknownModule> = {
-    [NAME in keyof MODULE["_reqType"]]-?: NonNullable<MODULE["_reqType"][NAME]>
+    [NAME in keyof MODULE["_reqType"]]-?: MODULE["_reqType"][NAME]
 }
 
 export type MarketPlan<
@@ -104,10 +111,10 @@ export type MarketPlan<
         required: UnknownService[]
     }
 > = {
-    [NAME in keyof Request<PLAN>]-?: NonNullable<Request<PLAN>[NAME]>
+    [NAME in keyof Request<PLAN>]-?: Request<PLAN>[NAME]
 }
 
-type SuppliesBase<
+type SuppliesPlanBase<
     PLAN extends Pick<UnknownModulePlan, "optionals"> & {
         required: UnknownService[]
     }
@@ -127,13 +134,13 @@ export type SuppliesPlan<
     }
 > =
     any[] extends PLAN["required"] ? any
-    :   SuppliesBase<PLAN> & {
+    :   SuppliesPlanBase<PLAN> & {
             [NAME in keyof UnionToIntersection<
                 Extract<
                     PLAN["required"][number],
                     UnknownModule
                 >["_suppliesType"]
-            > as NAME extends keyof SuppliesBase<PLAN> ? never
+            > as NAME extends keyof SuppliesPlanBase<PLAN> ? never
             :   NAME]: FindSupplyFirstAppearanceInServiceTuple<
                 PLAN["required"],
                 "_suppliesType",
@@ -141,17 +148,21 @@ export type SuppliesPlan<
             >
         }
 
+type SuppliesBase<REQUEST extends Partial<MarketRecord<UnknownService>>> = {
+    [NAME in keyof Required<REQUEST>]: Required<REQUEST>[NAME] extends (
+        Supplier<infer SERVICE>
+    ) ?
+        SERVICE["_type"]
+    :   never
+}
+
 export type Supplies<
-    SPECIFIED extends Partial<MarketRecord<UnknownService>>,
+    REQUEST extends Partial<MarketRecord<UnknownService>>,
     OPTIONAL_KEYS extends string
 > =
-    string extends keyof Required<SPECIFIED> ? any
+    string extends keyof Required<REQUEST> ? any
     :   {
-            [NAME in keyof SPECIFIED]-?: Required<SPECIFIED>[NAME] extends (
-                Supplier<infer SERVICE>
-            ) ?
-                NAME extends OPTIONAL_KEYS ?
-                    SERVICE["_type"] | undefined
-                :   SERVICE["_type"]
-            :   never
+            [NAME in keyof SuppliesBase<REQUEST>]:
+                | SuppliesBase<REQUEST>[NAME]
+                | (NAME extends OPTIONAL_KEYS ? undefined : never)
         }

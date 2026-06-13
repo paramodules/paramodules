@@ -1,5 +1,5 @@
-import type { ModuleGuard } from "#types/guards"
-import type { Service, PartialModulePlan } from "#types/internal"
+import type { HiredGuard, ModulePlanGuard } from "#types/guards"
+import type { Factory, Service, Warmup } from "#types/internal"
 import type {
     Market,
     Supplies,
@@ -11,11 +11,40 @@ import type {
 import type { MergeStringTuples } from "#types/utils"
 import type { Merge } from "#utils"
 
-export interface Param<NAME extends string = string, TYPE = unknown>
-    extends Service<NAME, TYPE> {
+export interface Param<
+    NAME extends string = string,
+    TYPE = unknown,
+    INIT = unknown
+> extends Service<NAME, TYPE> {
+    /**
+     * Sets an initial (default) value for the param, used when it is not
+     * requested. Returns the same param with `_init` set, which makes its
+     * field optional in the REQUEST type.
+     */
+    init: <THIS extends Param>(
+        this: THIS,
+        value: THIS["_type"]
+    ) => Param<THIS["tm"], THIS["_type"], THIS["_type"]>
     _type: TYPE
     _param: true
     _mock: false
+    /**
+     * The initial (default) value, used when the param is not requested.
+     * `never` when the param was created without an initial value, which keeps
+     * its field required in the REQUEST type.
+     */
+    _init: INIT
+}
+
+export type PartialModulePlan<
+    TYPE,
+    REQUIRED extends OriginalService[] = [],
+    OPTIONALS extends Param[] = []
+> = {
+    required?: [...REQUIRED]
+    optionals?: [...OPTIONALS]
+    factory: Factory<TYPE, REQUIRED, OPTIONALS>
+    warmup?: Warmup<TYPE, REQUIRED, OPTIONALS>
 }
 
 export interface Module<
@@ -44,38 +73,32 @@ export interface Module<
         OPTIONALS2 extends Param[] = []
     >(
         this: THIS,
-        plan: PartialModulePlan<TYPE2, REQUIRED2, OPTIONALS2>
-    ) => ModuleGuard<
-        Mock<THIS, TYPE2, REQUIRED2, OPTIONALS2>,
-        [...REQUIRED2, ...OPTIONALS2]
-    >
+        plan: ModulePlanGuard<THIS["tm"], TYPE2, REQUIRED2, OPTIONALS2>
+    ) => Mock<THIS, TYPE2, REQUIRED2, OPTIONALS2>
     hire: <THIS extends UnknownModule, HIRED extends UnknownModule[] = []>(
         this: THIS,
-        ...hired: [...HIRED]
-    ) => ModuleGuard<
-        Module<
-            THIS["tm"],
-            THIS["_type"],
-            THIS["_optionalKeys"],
-            THIS["_caller"],
+        ...hired: HiredGuard<THIS, HIRED>
+    ) => Module<
+        THIS["tm"],
+        THIS["_type"],
+        THIS["_optionalKeys"],
+        THIS["_caller"],
+        Merge<
+            {
+                [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
+            },
             Merge<
-                {
-                    [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
-                },
-                Merge<
-                    Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
-                    HIRED[number]["_reqType"]
-                >
-            >,
-            MergeStringTuples<
-                THIS["_hired"],
-                {
-                    [K in keyof HIRED]: HIRED[K]["tm"]
-                }
-            >,
-            THIS["_mock"]
+                Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
+                HIRED[number]["_reqType"]
+            >
         >,
-        HIRED
+        MergeStringTuples<
+            THIS["_hired"],
+            {
+                [K in keyof HIRED]: HIRED[K]["tm"]
+            }
+        >,
+        THIS["_mock"]
     >
     _module: true
     _param: false
@@ -212,3 +235,10 @@ export type Ctx<
 :   SERVICE & Param // simply returns the service itself if it's a request service (noop)
 
 export type { MarketRecord, RegistryRecord, Request }
+export type {
+    CircularModuleError,
+    DuplicateServiceError,
+    HiredGuard as HireArg,
+    ModulePlanGuard,
+    Team
+} from "#types/guards"

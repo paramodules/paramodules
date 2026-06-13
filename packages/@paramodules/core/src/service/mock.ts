@@ -1,10 +1,10 @@
 import { main } from "#service/main"
-import type { ModuleGuard } from "#types/guards"
-import type { PartialModulePlan } from "#types/internal"
+import type { ModulePlanGuard } from "#types/guards"
 import { assertModulePlan } from "#validation"
 import type {
     OriginalService,
     Param,
+    PartialModulePlan,
     UnknownModule,
     Mock as MockType
 } from "#types/public"
@@ -26,24 +26,23 @@ import type {
  * @returns A mock module with mock flag set to true
  * @public
  */
-export function Mock<TM extends string, TYPE>() {
+export function Mock() {
     return function mock<
-        THIS extends UnknownModule,
+        THIS extends UnknownModule & { _mock: false },
         TYPE2 extends THIS["_type"],
         REQUIRED2 extends OriginalService[] = [],
         OPTIONALS2 extends Param[] = []
     >(
-        this: THIS & {
-            tm: TM
-            _type: TYPE
-        },
-        plan: PartialModulePlan<TYPE2, REQUIRED2, OPTIONALS2>
-    ): ModuleGuard<
-        MockType<THIS, TYPE2, REQUIRED2, OPTIONALS2>,
-        [...REQUIRED2, ...OPTIONALS2]
-    > {
-        assertModulePlan(this.tm, plan)
-        const mock = main(this.tm, plan)
+        this: THIS,
+        plan: ModulePlanGuard<THIS["tm"], TYPE2, REQUIRED2, OPTIONALS2>
+    ): MockType<THIS, TYPE2, REQUIRED2, OPTIONALS2> {
+        const modulePlan = plan as PartialModulePlan<
+            TYPE2,
+            REQUIRED2,
+            OPTIONALS2
+        >
+        assertModulePlan(this.tm, modulePlan)
+        const mock = main(this.tm, modulePlan)
 
         return {
             ...this,

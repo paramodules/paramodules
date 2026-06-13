@@ -1,7 +1,7 @@
 import { team } from "#service/main"
-import type { ModuleGuard } from "#types/guards"
-import type { Module } from "#types/public"
-import type { Supplier, UnknownModule } from "#types/public"
+import type { HiredGuard } from "#types/guards"
+import type { Module, UnknownModule } from "#types/public"
+import type { Supplier } from "#types/public"
 import type { Supplies } from "#types/records"
 import type { MergeStringTuples } from "#types/utils"
 import type { Merge } from "#utils"
@@ -25,31 +25,28 @@ export function Hire() {
         HIRED extends UnknownModule[] = []
     >(
         this: THIS,
-        ...hired: [...HIRED]
-    ): ModuleGuard<
-        Module<
-            THIS["tm"],
-            THIS["_type"],
-            THIS["_optionalKeys"],
-            THIS["_caller"],
+        ...hired: HiredGuard<THIS, HIRED>
+    ): Module<
+        THIS["tm"],
+        THIS["_type"],
+        THIS["_optionalKeys"],
+        THIS["_caller"],
+        Merge<
+            {
+                [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
+            },
             Merge<
-                {
-                    [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
-                },
-                Merge<
-                    Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
-                    HIRED[number]["_reqType"]
-                >
-            >,
-            MergeStringTuples<
-                THIS["_hired"],
-                {
-                    [K in keyof HIRED]: HIRED[K]["tm"]
-                }
-            >,
-            THIS["_mock"]
+                Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
+                HIRED[number]["_reqType"]
+            >
         >,
-        HIRED
+        MergeStringTuples<
+            THIS["_hired"],
+            {
+                [K in keyof HIRED]: HIRED[K]["tm"]
+            }
+        >,
+        THIS["_mock"]
     > {
         assertModules(this.tm, hired, true)
         const mergedServices = [

@@ -31,7 +31,7 @@ export type Factory<
     }>
 ) => TYPE
 
-type Warmup<
+export type Warmup<
     TYPE,
     REQUIRED extends OriginalService[] = [],
     OPTIONALS extends Param[] = []
@@ -43,18 +43,6 @@ type Warmup<
     }>
 ) => void
 
-export type PartialModulePlan<
-    TYPE,
-    REQUIRED extends OriginalService[] = [],
-    OPTIONALS extends Param[] = []
-> = {
-    required?: [...REQUIRED]
-    optionals?: [...OPTIONALS]
-    factory: Factory<TYPE, REQUIRED, OPTIONALS>
-    warmup?: Warmup<TYPE, REQUIRED, OPTIONALS>
-    context?: unknown
-}
-
 export type ModulePlan<
     TYPE,
     REQUIRED extends OriginalService[],
@@ -64,7 +52,6 @@ export type ModulePlan<
     optionals: [...OPTIONALS]
     factory: Factory<TYPE, REQUIRED, OPTIONALS>
     warmup: Warmup<TYPE, REQUIRED, OPTIONALS>
-    context?: unknown
 }
 
 export type UnknownModulePlan = ModulePlan<unknown, OriginalService[], Param[]>

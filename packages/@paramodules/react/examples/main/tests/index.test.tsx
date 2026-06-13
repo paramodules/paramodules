@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "@/query"
 import { StrictMode } from "react"
 import { Provide } from "@marketjs/react"
-import { req } from "@/req"
+import { req } from "@/context"
 
 describe("React Client", () => {
     it("should be able to render the app", async () => {

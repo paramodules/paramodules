@@ -1,5 +1,75 @@
-import { describe, it, expect, assertType } from "vitest"
+import { describe, it, expect, assertType, expectTypeOf } from "vitest"
 import { index, service } from "#index"
+
+describe("Inited Params", () => {
+    it("makes a required param optional in the request and falls back to its init value", () => {
+        const $config = service("config").param<string>().init("default")
+
+        expect($config._init).toBe("default")
+
+        const $module = service("module").module({
+            required: [$config],
+            factory: ({ config }) => {
+                assertType<string>(config)
+                return config
+            }
+        })
+
+        // Not requested -> falls back to the init value.
+        expect($module.request({}).get()).toBe("default")
+
+        // Requested -> overrides the init value.
+        expect($module.request(index($config.of("override"))).get()).toBe(
+            "override"
+        )
+
+        // Providing a wrong type is still a type error.
+        expect(
+            // @ts-expect-error - invalid type
+            $module.request(index($config.of(42))).get()
+        ).toBe(42)
+    })
+
+    it("keeps non-inited required params required in the request type", () => {
+        const $required = service("required").param<string>()
+        const $inited = service("inited").param<number>().init(7)
+
+        const $module = service("module").module({
+            required: [$required, $inited],
+            factory: ({ required, inited }) => `${required}:${inited}`
+        })
+
+        // Only the non-inited param is required; inited one is optional.
+        expect($module.request(index($required.of("a"))).get()).toBe("a:7")
+
+        // @ts-expect-error - missing the non-inited required param
+        $module.request(index($inited.of(1)))
+    })
+
+    it("type-checks the init value against the param type", () => {
+        // @ts-expect-error - init value must match the param type
+        service("config").param<string>().init(123)
+    })
+
+    it("provision() resolves inited required params from their init value", () => {
+        const $config = service("config").param<string>().init("default")
+
+        const $module = service("module").module({
+            required: [$config],
+            factory: ({ config }) => `value:${config}`
+        })
+
+        const provisioned = $module.provision()
+
+        // No values supplied -> inited required param resolves to its default.
+        expect(provisioned.request({}).get()).toBe("value:default")
+
+        // Re-requesting from the provisioned module still allows overriding.
+        expect(provisioned.request(index($config.of("override"))).get()).toBe(
+            "value:override"
+        )
+    })
+})
 
 describe("Optionals Feature", () => {
     describe("Basic Optional Usage", () => {
@@ -106,6 +176,49 @@ describe("Optionals Feature", () => {
             $module.request(index($required.of("test"), $optional.of(42)))
         })
 
+        it("should make optional supplies nullable when read from outside the factory", () => {
+            const $required = service("required").param<string>()
+            const $optional = service("optional").param<number>()
+
+            const $module = service("module").module({
+                required: [$required],
+                optionals: [$optional],
+                factory: ({ required }) => required
+            })
+
+            const supplier = $module.request(index($required.of("test")))
+
+            // The supplies type (read outside the factory) must match the
+            // factory's deps type exactly: required non-nullable, optional
+            // nullable. `toEqualTypeOf` is exact, so a missing `| undefined`
+            // (the `-?` undefined-stripping bug) fails the check.
+            expectTypeOf(supplier.supplies.required).toEqualTypeOf<string>()
+            expectTypeOf(supplier.supplies.optional).toEqualTypeOf<
+                number | undefined
+            >()
+
+            // _suppliesType is the same type external readers see.
+            type Supplies = (typeof $module)["_suppliesType"]
+            expectTypeOf<Supplies["required"]>().toEqualTypeOf<string>()
+            expectTypeOf<Supplies["optional"]>().toEqualTypeOf<
+                number | undefined
+            >()
+        })
+
+        it("should make optional supplies nullable for a module with only optionals", () => {
+            const $opt1 = service("opt1").param<string>()
+            const $opt2 = service("opt2").param<number>()
+
+            const $module = service("module").module({
+                optionals: [$opt1, $opt2],
+                factory: () => "value"
+            })
+
+            type Supplies = (typeof $module)["_suppliesType"]
+            expectTypeOf<Supplies["opt1"]>().toEqualTypeOf<string | undefined>()
+            expectTypeOf<Supplies["opt2"]>().toEqualTypeOf<number | undefined>()
+        })
+
         it("should require all required params in request", () => {
             const $required = service("required").param<string>()
             const $optional = service("optional").param<number>()
@@ -120,10 +233,12 @@ describe("Optionals Feature", () => {
                 }
             })
 
-            expect(() => {
+            // Missing a required param is a type error (caught above); at
+            // runtime it simply resolves to undefined rather than throwing.
+            expect(
                 // @ts-expect-error - missing required service
                 $service.request(index($optional.of(42))).get()
-            }).toThrow()
+            ).toBe("result")
 
             // Should work without optional
             $service.request(index($required.of("test"))).get()

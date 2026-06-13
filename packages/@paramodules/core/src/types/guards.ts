@@ -1,4 +1,10 @@
-import type { UnknownModule, UnknownService } from "#types/public"
+import type {
+    OriginalService,
+    Param,
+    PartialModulePlan,
+    UnknownModule,
+    UnknownService
+} from "#types/public"
 
 type FindDuplicateTrademark<
     SERVICES extends UnknownService[],
@@ -20,41 +26,95 @@ export interface DuplicateServiceError {
     ERROR: "Duplicate service trademark detected"
 }
 
-export type DuplicateServiceGuard<
-    SERVICE extends UnknownService,
-    SERVICES extends UnknownService[]
+export type Team<
+    REQUIRED extends UnknownService[],
+    OPTIONALS extends Param[],
+    SERVICES extends UnknownService[] = [...REQUIRED, ...OPTIONALS]
 > =
-    [FindDuplicateTrademark<SERVICES>] extends [never] ? SERVICE
-    :   DuplicateServiceError
-
-/**
- * Checks if a module has a circular dependency by seeing if its tm appears
- * in the transitive dependencies of its own modules.
- * @public
- */
-
-type CallerProvidedKeys<MODULE extends UnknownModule> =
-    NonNullable<MODULE["_caller"]> extends { market: infer MARKET } ?
-        keyof MARKET
+    any[] extends SERVICES ? never
+    : SERVICES extends (
+        [infer S extends UnknownService, ...infer REST extends UnknownService[]]
+    ) ?
+        | (string extends S["tm"] ? never
+          : S extends UnknownModule ?
+              | S["tm"]
+              | (string extends keyof S["_reqType"] ? never
+                :   keyof S["_reqType"])
+          :   S["tm"])
+        | Team<REST, []>
     :   never
 
-export type CircularModuleGuard<MODULE extends UnknownModule> =
-    string extends MODULE["tm"] ? MODULE
-    : string extends keyof MODULE["_reqType"] ? MODULE
-    : MODULE["tm"] extends (
-        keyof Omit<MODULE["_reqType"], CallerProvidedKeys<MODULE>>
-    ) ?
-        CircularModuleError
-    :   MODULE
+type TeamHasCircular<
+    TM extends string,
+    REQUIRED extends UnknownService[],
+    OPTIONALS extends Param[]
+> =
+    string extends TM ? false
+    : TM extends Team<REQUIRED, OPTIONALS> ? true
+    : false
+
+type PlanHasDuplicate<
+    REQUIRED extends OriginalService[],
+    OPTIONALS extends Param[]
+> =
+    [FindDuplicateTrademark<[...REQUIRED, ...OPTIONALS]>] extends [never] ?
+        false
+    :   true
 
 export type CircularModuleError = {
     ERROR: "Circular dependency detected"
 }
 
-export type ModuleGuard<
-    MODULE extends UnknownModule,
-    SERVICES extends UnknownService[]
+/**
+ * Valid plan argument for `module()` / `mock()`. Invalid plans become error types.
+ * @public
+ */
+export type ModulePlanGuard<
+    TM extends string,
+    TYPE,
+    REQUIRED extends OriginalService[] = [],
+    OPTIONALS extends Param[] = []
 > =
-    DuplicateServiceGuard<MODULE, SERVICES> extends DuplicateServiceError ?
-        DuplicateServiceError
-    :   CircularModuleGuard<MODULE>
+    PlanHasDuplicate<REQUIRED, OPTIONALS> extends true ? DuplicateServiceError
+    : TeamHasCircular<TM, REQUIRED, OPTIONALS> extends true ?
+        CircularModuleError
+    :   PartialModulePlan<TYPE, REQUIRED, OPTIONALS>
+
+type FilterHired<
+    REQUIRED extends OriginalService[],
+    HIRED extends UnknownModule[]
+> =
+    any[] extends REQUIRED ? []
+    : REQUIRED extends (
+        [
+            infer FIRST extends OriginalService,
+            ...infer REST extends OriginalService[]
+        ]
+    ) ?
+        FIRST["tm"] extends HIRED[number]["tm"] ?
+            FilterHired<REST, HIRED>
+        :   [FIRST, ...FilterHired<REST, HIRED>]
+    :   []
+
+type MergeHired<THIS extends UnknownModule, HIRED extends UnknownModule[]> = [
+    ...FilterHired<THIS["_required"], HIRED>,
+    ...HIRED
+]
+
+/**
+ * Valid hired modules for `hire()`. Invalid tuples become error types.
+ * @public
+ */
+export type HiredGuard<
+    THIS extends UnknownModule,
+    HIRED extends UnknownModule[]
+> =
+    [FindDuplicateTrademark<HIRED>] extends [never] ?
+        TeamHasCircular<
+            THIS["tm"],
+            MergeHired<THIS, HIRED>,
+            THIS["_optionals"]
+        > extends true ?
+            CircularModuleError[]
+        :   HIRED
+    :   DuplicateServiceError[]

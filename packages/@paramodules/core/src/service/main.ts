@@ -1,4 +1,4 @@
-import type { PartialModulePlan } from "#types/internal"
+import type { PartialModulePlan, Supplier } from "#types/public"
 import { request, provision } from "#service/request"
 import { _resolve } from "#service/resolve"
 import { service } from "#index"
@@ -10,6 +10,40 @@ import type {
     Param,
     UnknownService
 } from "#types/public"
+import { assertTM } from "#validation"
+
+export function param<TM extends string, TYPE = any>(
+    tm: TM
+): Param<TM, TYPE, never> {
+    assertTM(tm)
+    return {
+        tm,
+        of<THIS extends UnknownService, VALUE extends THIS["_type"]>(
+            this: THIS,
+            value: VALUE
+        ): Supplier<THIS> {
+            return {
+                get: () => value,
+                supplies: {} as never,
+                market: {} as never,
+                service: this,
+                _ctx: (() => null) as never,
+                _requested: true as const
+            } as any
+        },
+        init<THIS extends Param>(this: THIS, value: THIS["_type"]) {
+            return { ...this, _init: value } as Param<
+                THIS["tm"],
+                THIS["_type"],
+                THIS["_type"]
+            >
+        },
+        _type: null as unknown as TYPE,
+        _param: true as const,
+        _mock: false as const,
+        _init: undefined as never
+    }
+}
 
 export function main<
     TM extends string,
@@ -40,7 +74,7 @@ export function main<
     >
 
     return {
-        ...service(tm).param<TYPE>(),
+        ...param<TM, TYPE>(tm),
         request: request,
         provision,
         _factory: plan.factory,

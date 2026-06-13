@@ -55,8 +55,12 @@ export function request<THIS extends UnknownModule>(
     }
 
     for (const service of this._team) {
-        if (!isModule(service) || service.tm in registry) continue
-        registry[service.tm] = once(() => service._resolve(registry))
+        if (service.tm in registry) continue
+        if (isModule(service)) {
+            registry[service.tm] = once(() => service._resolve(registry))
+            continue
+        }
+        registry[service.tm] = service.of(service._init)
     }
 
     const supplier = this._resolve(registry)

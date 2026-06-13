@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, expectTypeOf } from "vitest"
 import { index, service } from "#index"
 import { sleep, once } from "#utils"
-import type { CircularModuleError, DuplicateServiceError } from "#types/guards"
+import type {
+    CircularModuleError,
+    DuplicateServiceError,
+    HiredGuard,
+    ModulePlanGuard
+} from "#types/guards"
 import type { Supplier } from "#types/public"
 
 describe("Mocks Feature", () => {
@@ -125,11 +130,10 @@ describe("Mocks Feature", () => {
             // This should be caught by the circular dependency detection
             expect(() => {
                 const $mockA = $A.mock({
+                    // @ts-expect-error - CircularModuleError
                     required: [$B], // This creates a potential circle
-                    factory: ({ B }) => "mockA uses " + B
+                    factory: ({ B }: { B: any }) => "mockA uses " + B
                 })
-
-                expectTypeOf($mockA).toExtend<CircularModuleError>()
             }).toThrow("Circular dependency detected")
         })
     })
@@ -234,9 +238,8 @@ describe("Mocks Feature", () => {
                 required: []
             })
 
+            // @ts-expect-error - DuplicateServiceError
             const $hired = $main.hire($mockDb1, $mockDb2)
-
-            expectTypeOf($hired).toExtend<DuplicateServiceError>()
         })
 
         it("should allow hire multiple modules together", () => {
