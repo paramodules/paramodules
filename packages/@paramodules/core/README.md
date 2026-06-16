@@ -2,138 +2,134 @@
 
 **Stateless, parametrizable runtime modules — type-inferred primitives for cascading full-stack application architecture.**
 
-Model the cascades in your app as a graph of small, decoupled, fully type-inferred modules. Stamp your inputs at the edge, and resolve the whole cascade as one immutable, request-scoped snapshot — no decorators, no containers, no global state, no magic.
+`paramodules` lets you model application behavior as small runtime modules. A paramodule is a typed factory that carries the dependency graph it needs to run. You provide params at the entry-point, request a module, and get back one immutable, request-scoped snapshot of the whole graph.
+
+The main use case is cascade management. In a full-stack app, one request input often determines many downstream decisions: what data to load, what shape to return, what actions the UI can show, and which derived values must refresh after a write. Paramodules gives that chain a first-class primitive.
 
 ```ts
-import { service, index } from "@paramodules/core"
+import { service, index } from "paramodules"
 
 const $session = service("session").param<{ userId: string }>()
 
-const $greet = service("greet").module({
+const $profile = service("profile").module({
     required: [$session],
-    factory: ({ session }) => `Hello, ${session.userId}!`
+    factory: ({ session }) => ({ name: session.userId })
 })
 
-const message = $greet.request(index($session.of({ userId: "ada" }))).get()
-// → "Hello, ada!"
+const $greeting = service("greeting").module({
+    required: [$profile],
+    factory: ({ profile }) => `Hello, ${profile.name}!`
+})
+
+const message = $greeting.request(index($session.of({ userId: "ada" }))).get()
+// "Hello, ada!"
 ```
 
-That's the whole library.
+Declare params, compose modules, request a module with concrete inputs. That's it
+
+Only params need to be provided at the request entry-point, and Typescript will tell you exactly what you need to provide. All transitive modules are auto-wired. In the chain above, only $session needs to be provided to .request().
 
 ---
 
-## The hard part of decoupling is the cascade 🌊
+### Functions and classes are the wrong unit of decoupling
 
-We all reach for the same goal: **decoupled code** — pieces you can read, test, and change in isolation. The standard move is to split the program into functions: clean inputs, clean outputs, no entanglement.
+We usually start decoupling code by extracting functions or classes. A function has inputs and an output. A class has methods and private state. Both can be tidy local units.
 
-But functions don't stay decoupled, because real programs are full of **cascades** — a value or a change in one place that has to ripple through many others. A session flows into a scoped database, into a query, into a result, into a view. A write to one cache invalidates the caches derived from it. A state change re-renders everything downstream. The cascade couples your "independent" pieces whether you want it to or not. Two functions that look unrelated are secretly joined by the value that flows between them — or by the invalidation that must.
+But real applications are dominated by **cascades**: a value or change in one place ripples through many others.
 
-**This is why cache invalidation is the canonical hard problem.** Writing a cache is trivial. Invalidating one is brutal — the moment the underlying data changes, every cache that derived from it has to be invalidated too. That's a cascade tearing across caches that were each designed to be independent. The independence was the illusion; the cascade was the truth all along.
+A logged-in user flows into a data loader, into an API response, into a page, into the actions that page is allowed to show. A form submission updates a record, refreshes the page data, and changes the derived UI that used the old value. A state update re-renders every dependent UI node. A feature flag can change which branch of the page loads and which actions are available. The pieces may be separated into clean functions or classes, but the cascade still couples them.
 
-**UI frameworks are the largest case study in losing this fight.** They adopted the component model specifically to buy decoupling — components as isolated, composable units. But components are _not_ truly decoupled, because cascades run straight through them: shared state, derived values, data loading, re-render propagation. So the framework has to put the coupling back, and it does it with a pile of hidden runtime machinery — Context to smuggle a value past components that shouldn't have to know about it; caching and memo to stop the cascade from recomputing everything; preloading and loading waterfalls; Suspense to choreograph async cascades. Each of these exists to re-couple components that the component model pretended were separate, and each one costs you manual optimization to keep under control.
+This is why apps that decouple code using functions or classes need external plumbing to wire the cascade back in:
 
-### Functions are the wrong unit of decoupling
+- Dependency injection containers that wire functions and classes back together at runtime.
+- UI frameworks that add schedulers, loaders, suspense boundaries, context propagation, and caching to control render cascades.
+- Global stores and context systems that move values through layers that do not otherwise need to know about them.
+- Caching frameworks that force you to manually invalidate after every mutation, because they don't know about how derived values flow through the cache.
+- Manual function argument typing in Typescript because functions are isolated and cannot infer the types of the arguments they receive.
 
-Here's the claim. We keep picking the **function** as our unit of decoupling — and a function can't carry the cascade it lives in. It takes inputs and returns an output, but it has no idea what it depends on transitively, or what depends on it. So we always need something _outside_ the function to wire the cascade back together: a DI container, a framework runtime, a global store.
+The problem is not that functions and classes are bad. They are just the wrong primitive for this job. A function can compute a value, but it does not carry the cascade it belongs to. A class can hide state, but it still needs something else to decide how its dependencies are wired for the current request.
 
-Traditional dependency injection makes this painfully literal — functions are the decoupled units, and a **container** is the external apparatus that couples them back together at runtime. That container is exactly where the hidden complexity collects: it's global, stateful, awkward to type, hard to test, and it's what makes "decoupled" code impossible to reason about locally.
+So the cascade ends up living somewhere else. Sometimes that place is a container. Sometimes it is a framework runtime or a global store. Sometimes it is just manual wiring spread across the call stack.
 
 ### Modules are the right unit of decoupling
 
-So what if the unit of decoupling carried its cascade _with it_?
+A paramodule is a function-like unit that carries its dependency graph.
 
-That's what **modules** are: a function that holds its entire dependency stack. Not a function plus a container — a function that _is_ its own slice of the graph. It declares what it needs, and everything it transitively depends on travels with it. Hand a module to a test, to another module, or to the edge of your app, and it brings its whole cascade along. There's no container, because there's nothing left to couple — the coupling already lives inside the module.
+```ts
+const $profile = service("profile").module({
+    required: [$session, $db],
+    factory: ({ session, db }) => db.profiles.findById(session.userId)
+})
+```
 
-Once the cascade lives inside the module, the hard parts dissolve into properties of the type:
-
-- **The value cascade wires itself** — a deep module simply declares `$session`; no layer in between has to thread it through. (No prop-drilling, no Context.)
-- **The type cascade is carried in the module's type** — change an input's shape and every dependent fails to compile. (Full inference, no annotations.)
-- **The invalidation cascade is structural** — swap one input with `ctx()` and the module recomputes exactly its dependents and reuses the rest. (Cache invalidation, for free, from the shape of the graph.)
-- **Isolation is the default** — nothing lives in a global container, so every resolution is its own immutable, request-scoped snapshot.
-
-None of the _parts_ are new — dependency injection, memoization, and derived graphs all predate this. The idea is the **choice of primitive**: decouple at the level of the _module_ — the function-with-its-dependency-stack — instead of the bare function. Do that, and the cascade stops being something you bolt back on with a runtime, and becomes something you get for free.
-
-The rest of this README is that idea, made concrete.
+`$profile` is not just a factory. It is the factory plus the typed list of everything it needs. If another module depends on `$profile`, it inherits that dependency stack transitively. If you pass `$profile` to a test, a server route, a script, or another module, its cascade comes with it.
 
 ---
 
 ## Why paramodules? 🤔
 
-- 🧩 **Modules, not functions, as the unit of decoupling** — a `service().module()` is a function that carries its whole dependency stack, so there's no container to wire it back together.
-- 🔒 **Type inference cascades for you** — TypeScript follows the graph end to end. Change an upstream shape and every downstream factory updates; forget a required input and the compiler tells you.
-- 🧊 **Stateless, immutable, request-scoped** — context flows without a container, registry, or `AsyncLocalStorage`. Each `request()` is its own universe.
-- ⚡ **Zero framework coupling** — server components, edge handlers, microservices, scripts. Anywhere TypeScript runs.
-- 🔁 **Memoized by construction** — diamond dependencies resolve once per request; swap one input and only the affected subtree recomputes.
-- 🛡️ **Compile-time graph guards** — circular dependencies and duplicate trademarks surface as type errors before you run anything.
-- 🚫 **Refreshingly un-OOP** — no classes, no decorators, no `reflect-metadata`. Just functions and inference.
+- **Modules, not functions or classes, as the unit of decoupling** — a module carries the dependency graph it needs, so the cascade is part of the primitive instead of something a container rebuilds later.
+- **Type inference cascades end to end** — TypeScript follows params and modules through the graph. Change an upstream shape and downstream factories update immediately.
+- **Stateless and request-scoped** — each `.request(...)` creates its own immutable graph snapshot, so values do not leak through a global registry or singleton container.
+- **Parametrizable at the entry point** — Your entire app shape-shifts declaratively depending on the params and modules provided at the request entry-point. Include request params, but also feature flags, environments, and swap entire module implementations with .mock() and .hire().
+- **Memoized by construction** — shared dependencies resolve once per request, in parallel by default. Diamond dependencies do not recompute.
+- **Nested request scopes** — use `ctx(...)` when a factory needs to request another module with different params while keeping that nested resolution scoped and typed.
+- **Framework-agnostic core** — Can augment any framework, works anywhere Typescript runs.
 
 ---
 
 ## Install
 
 ```bash
-npm install @paramodules/core
+npm install paramodules
 ```
-
----
-
-## Core vocabulary 🧱
-
-| Term                  | What it is                                                                                    |
-| --------------------- | --------------------------------------------------------------------------------------------- |
-| `service(tm)`         | Declare a named, typed identity. `tm` is a trademark token uniquely identifying this service. |
-| `.param<T>()`         | A typed slot for a value the caller provides at the edge — the source of a cascade.           |
-| `.module({…})`        | A node in the cascade: a value derived from other params and modules via `factory`.           |
-| `.of(value)`          | Stamp a concrete value onto a service — producing a **supplier**.                             |
-| `.request(…)`         | Resolve the whole cascade for one set of inputs.                                              |
-| `.get()`              | Read the value out of a supplier.                                                             |
-| `.provision()`        | Pre-resolve every node that doesn't depend on a request-time param.                           |
-| `.mock()` + `.hire()` | Reroute part of the cascade without touching call sites.                                      |
-| `ctx(…)`              | From inside a factory, re-resolve part of the cascade with different inputs.                  |
-| `index(…)`            | Key a list of suppliers by trademark, producing the map `request()` expects.                  |
-| `supplies` / `market` | The resolved values / suppliers for every node in the cascade.                                |
-
----
-
-## Cascades in practice
-
-The same module primitive handles every kind of cascade. Here are the common ones.
-
-### Type-inference cascades 🔠
-
-Wire one module on top of another and the **types flow on their own**. Change a shape upstream and every downstream factory sees it immediately — no annotations, no re-plumbing.
 
 ```ts
-const $tenant = service("tenant").param<{
-    orgId: string
-    plan: "free" | "pro"
+import { service, index, once, sleep } from "paramodules"
+```
+
+## Cascade Examples
+
+The same module primitive shows up in a few common full-stack flows.
+
+### Type-Inference Cascades
+
+Types flow through the graph from params to modules to downstream modules.
+
+```ts
+const $currentUser = service("currentUser").param<{
+    id: string
+    name: string
+    avatarUrl: string | null
 }>()
 
-const $limits = service("limits").module({
-    required: [$tenant],
-    factory: ({ tenant }) =>
-        tenant.plan === "pro" ? { seats: 100 } : { seats: 3 }
+const $profile = service("profile").module({
+    required: [$currentUser],
+    factory: ({ currentUser }) => ({
+        id: currentUser.id,
+        label: currentUser.name,
+        avatar: currentUser.avatarUrl ?? "/default-avatar.png"
+    })
 })
 
-const $billing = service("billing").module({
-    required: [$tenant, $limits],
-    // `tenant` and `limits` are both fully typed from the graph above
-    factory: ({ tenant, limits }) => ({
-        orgId: tenant.orgId,
-        seats: limits.seats
-    })
+const $profileSummary = service("profileSummary").module({
+    required: [$profile],
+    factory: ({ profile }) => `${profile.label} (${profile.id})`
 })
 ```
 
-Add a field to `$tenant` and it appears in every factory that destructures `tenant`. Rename `plan` and the cascade lights up red at exactly the sites that still use the old name. The dependency list reads like a function signature, and inference cascades through the whole graph from it.
+Rename `currentUser.avatarUrl`, and the `$profile` factory fails at compile time. Rename `profile.label`, and `$profileSummary` fails too. The types follow the graph from param to module to module.
 
-### Query-building cascades 🧮
+### Query-Building Cascades
 
-Complex queries are cascades of small refinements: a base query, then a tenant filter, then an ownership filter, then a status filter. Each refinement is a decoupled module that narrows the one before it.
+Data loading often grows one rule at a time. Start with the records visible to the current user, narrow them to records owned by that user, then narrow again to drafts. Each step can be a module that builds on the previous step.
 
 ```ts
 const $session = service("session").param<{ orgId: string; userId: string }>()
-const $db = service("db").param<Database>()
+
+const $db = service("db").module({
+    factory: () => db
+})
 
 const $visiblePosts = service("visiblePosts").module({
     required: [$session, $db],
@@ -153,14 +149,13 @@ const $myDrafts = service("myDrafts").module({
 })
 ```
 
-Each stage is independently testable, and the tenant boundary declared at the root is guaranteed present in every leaf — you cannot build `$myDrafts` without `$visiblePosts`'s `orgId` filter cascading into it. This is exactly the multitenant scope pattern: a safe base scope that everything downstream is forced to compose from.
+`$myDrafts` cannot accidentally skip the visibility rule because it composes from `$myPosts`, which composes from `$visiblePosts`. The rule that decides which posts the user can see is part of the graph.
 
-### Prop-drilling cascades, eliminated 🪜
+### Prop-Drilling Cascades
 
-The usual way a value reaches a deep consumer is by threading it through every layer in between. A module that needs `$session` just **declares it**, no matter how deep it sits — the layers above never have to accept-and-forward it.
+A deep module declares the params it needs directly. Intermediate modules do not have to accept and forward values just to keep the chain alive.
 
 ```ts
-// $session is needed all the way down here…
 const $auditLog = service("auditLog").module({
     required: [$session, $db],
     factory:
@@ -169,7 +164,6 @@ const $auditLog = service("auditLog").module({
             db.audit.insert({ userId: session.userId, action })
 })
 
-// …but $report never mentions $session, even though it uses $auditLog
 const $report = service("report").module({
     required: [$auditLog],
     factory:
@@ -179,82 +173,307 @@ const $report = service("report").module({
 })
 ```
 
-`$report` doesn't know or care that `$auditLog` needs a session. The value cascades straight from the edge to the node that asked for it; intermediate nodes stay oblivious. The drilling disappears — this is the Context smuggling problem, solved by the module carrying its own stack.
+`$report` does not mention `$session`, even though `$auditLog` needs it. The module graph carries that dependency stack.
 
-### Loading waterfalls 💧
+### Data Loading Cascades
 
-A loading waterfall is a cascade with async edges: load the user, then the user's org, then the org's settings. The dependency graph _is_ the waterfall — and because a factory only awaits the upstream values it actually uses, sequential steps serialize while independent branches resolve in parallel.
+Factories can be `async`, and you write them plainly with `async` and `await`. The thing to know is that a chain of async modules does not turn into a loading waterfall. When you request a module, paramodules starts resolving every module it needs in the background, so independent loads run in parallel instead of one-after-another.
 
 ```ts
-const $user = service("user").module({
+const $profile = service("profile").module({
     required: [$session, $db],
-    factory: ({ session, db }) => db.users.findById(session.userId) // Promise<User>
+    factory: async ({ session, db }) =>
+        await db.profiles.findByUserId(session.userId)
 })
 
-const $org = service("org").module({
-    required: [$user, $db],
-    factory: async ({ user, db }) => db.orgs.findById((await user).orgId)
+const $notifications = service("notifications").module({
+    required: [$session, $db],
+    factory: async ({ session, db }) =>
+        await db.notifications.findForUser(session.userId)
 })
 
-const $settings = service("settings").module({
-    required: [$org, $db],
-    factory: async ({ org, db }) => db.settings.findByOrg((await org).id)
-})
-```
-
-`$settings` waits on `$org`, which waits on `$user` — a clean three-step waterfall expressed as data, not control flow. Any node that doesn't sit on that chain (a `$featureFlags` lookup, say) is kicked off alongside it rather than after it. Because `get()` returns a promise whenever a factory is async, the edge just `await`s the final node.
-
-### Cache-invalidation cascades ♻️
-
-This is the hard problem from the intro, handled structurally. Within one `request()`, every node is memoized — a value used by ten downstream modules is computed once (diamond dependencies just work). When you re-resolve part of the graph with a different input via `ctx()`, invalidation cascades precisely: anything that transitively depends on the changed input recomputes, and everything else is reused from the parent snapshot.
-
-```ts
-const $main = service("main").module({
-    required: [$E], // $E depends on $A, $B(←$A), $C, $D(←$B)
-    factory: ({ E }, ctx) => {
-        // Swap $A. $B and $D depend on it (directly or transitively) → they recompute.
-        // $C is independent → it is reused, not rebuilt.
-        const next = ctx($E)
-            .request(index($A.of(freshValue)))
-            .get()
-
-        next.A !== E.A // changed
-        next.B !== E.B // recomputed (depends on A)
-        next.C === E.C // reused (independent of A)
-        next.D !== E.D // recomputed (depends on B)
-        return next
+const $dashboard = service("dashboard").module({
+    required: [$profile, $notifications],
+    factory: async ({ profile, notifications }) => {
+        return {
+            profile: await profile,
+            notifications: await notifications
+        }
     }
 })
+
+const dashboard = await $dashboard.request(index($session.of(session))).get()
 ```
 
-You get fine-grained invalidation for free, derived from the shape of the graph — no manual cache keys, no dependency arrays to keep in sync.
+`$profile` and `$notifications` both need `$session` and `$db`, but they do not need each other. Requesting `$dashboard` kicks off $dashboard, $notifications and $profile factories all in parallel and in the background.
 
-### UI mutation cascades 🎛️ _(forward-looking)_
+That eager background resolution is the default, but you can control it per factory.
 
-UI frameworks already have cascade machinery: a state change at one node cascades down to re-render its consumers. The challenge is bridging a paramodules graph to a framework's own context propagation so that those mutation cascades line up with your dependency graph.
-
-That's what the optional `context` field on a param/module is for. It stores an **opaque handle** — a React `Context` object, a Vue inject key, an `AsyncLocalStorage` instance — that core paramodules never interprets. An adapter reads it to connect a trademark to the framework's native context mechanism:
+Make the loading **lazy** by returning functions from factories.
 
 ```ts
-// The handle is stored verbatim for an adapter to consume later.
-const $theme = service("theme").param<Theme>({ context: ThemeReactContext })
+const $profile = service("profile").module({
+    required: [$session, $db],
+    factory: ({ session, db }) =>
+        once(async () => await db.profiles.findByUserId(session.userId))
+})
+
+const $notifications = service("notifications").module({
+    required: [$session, $db],
+    factory: ({ session, db }) =>
+        once(async () => await db.notifications.findForUser(session.userId))
+})
+
+const $dashboard = service("dashboard").module({
+    required: [$profile, $notifications],
+    factory: async ({ profile, notifications }) => ({
+        profile: await profile(),
+        notifications: await notifications()
+    })
+})
+
+const dashboard = await $dashboard.request(index($session.of(session))).get()
 ```
 
-Core stays framework-agnostic; adapters use the `context` field to let UI mutations cascade through the host framework while the rest of your graph remains plain, testable paramodules. (Adapters live outside `@paramodules/core`.)
+This intentionally creates a waterfall. First `$dashboard` starts. Only inside its factory does `profile()` and `notifications()` start loading. That gives the dashboard factory control over when loading begins, so if some loading is expensive but conditional, the lazy pattern can be useful.
+
+If for optimization and testing, you need to easily toggle between lazy or eager behavior, you can use the warmed-up factory pattern:
+
+```ts
+const $profile = service("profile").module({
+    required: [$session, $db],
+    factory: ({ session, db }) =>
+        once(async () => await db.profiles.findByUserId(session.userId)),
+    warmup: (profile) => {
+        profile()
+    }
+})
+
+const $notifications = service("notifications").module({
+    required: [$session, $db],
+    factory: ({ session, db }) =>
+        once(async () => await db.notifications.findForUser(session.userId)),
+    warmup: (notifications) => {
+        notifications()
+    }
+})
+
+const $dashboard = service("dashboard").module({
+    required: [$profile, $notifications],
+    factory: async ({ warmLoadProfile, warmLoadNotifications }) => ({
+        profile: await profile(),
+        notifications: await notifications()
+    })
+})
+```
+
+Now profile and notifications are still loaded eagerly, but you can toggle easily just by removing or commenting out their warmup function. You don't need to refactor all dependent call sites from **await value** to **await value()** when you toggle, they stay as **await value()**
 
 ---
 
-## Getting started 🛠️
+## Core Vocabulary
 
-Three concepts, in the order you'll use them.
+| Term                  | What it is                                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| `service(tm)`         | Declare a named identity. `tm` is the runtime-validated graph key (trademark).            |
+| `.param<T>()`         | A typed runtime input supplied at the request entry point.                                |
+| `.init(value)`        | Give a param a default value so it can be omitted from `request(...)`.                    |
+| `.module({ ... })`    | A graph node: a value derived from params and other modules.                              |
+| `required`            | Dependencies that must be available to the factory.                                       |
+| `optionals`           | Params a module can use if supplied; factories see them as `T \| undefined`.              |
+| `factory`             | The function that produces the module value from inferred supplies and `ctx`.             |
+| `warmup`              | Optional hook invoked after the factory returns, useful for eager warming of lazy values. |
+| `.of(value)`          | Stamp a concrete value onto a param or module, producing a supplier.                      |
+| `.request(...)`       | Resolve a module for one set of supplied inputs.                                          |
+| `.provision()`        | Pre-resolve graph parts that do not depend on open request-time params.                   |
+| `.mock()` + `.hire()` | Replace part of a cascade without changing downstream call sites.                         |
+| `ctx(...)`            | Create a nested request scope from inside a factory.                                      |
+| `index(...)`          | Key suppliers by trademark for the object shape `.request(...)` expects.                  |
+| `supplier.get()`      | Read the requested module's value.                                                        |
+| `supplier.supplies`   | Read resolved values for the graph, keyed by trademark.                                   |
+| `supplier.market`     | Read suppliers for the graph, keyed by trademark.                                         |
 
-**1. Params** are the sources of a cascade — values from the outside world. No factory.
+---
+
+## Getting Started
+
+### 1. Declare Params
+
+Params are request-time inputs. They have no factory.
 
 ```ts
 const $session = service("session").param<{ userId: string }>()
 ```
 
-**2. Modules** are the nodes — values derived from params and other modules.
+### 2. Compose Modules
+
+Modules derive values from params and other modules.
+
+```ts
+const $db = service("db").module({
+    factory: () => database
+})
+
+const $profile = service("profile").module({
+    required: [$session, $db],
+    factory: ({ session, db }) => db.profiles.findById(session.userId)
+})
+
+const $profileSummary = service("profileSummary").module({
+    required: [$profile],
+    factory: ({ profile }) => ({
+        name: profile.name,
+        joinedYear: profile.createdAt.getFullYear()
+    })
+})
+```
+
+The factory receives `supplies`, an object keyed by the trademarks in `required` and `optionals`. Everything is inferred from the dependency list.
+
+### 3. Request at the Entry Point
+
+```ts
+const profileSummary = $profileSummary
+    .request(index($session.of({ userId: "ada" })))
+    .get()
+```
+
+`index(...)` builds the request object from suppliers. Missing required params are type errors. Optional and initialized params can be omitted.
+
+---
+
+## Reading Values Back Out
+
+`.request(...)` returns a supplier.
+
+```ts
+const supplier = $profileSummary.request(index($session.of({ userId: "ada" })))
+
+supplier.get()
+supplier.supplies.session
+supplier.supplies.profile
+supplier.market.profile.get()
+```
+
+`supplier.get()` reads the requested module's value. `supplier.supplies` exposes unwrapped values for the cascade. `supplier.market` exposes suppliers, which lets you read lazily and preserve supplier identity.
+
+---
+
+## Advanced usage
+
+### Optionals
+
+Put a param in `optionals` when a module can use it if present but should still resolve without it.
+
+```ts
+const $config = service("config").param<{ apiUrl: string }>()
+const $auth = service("auth").param<{ token: string }>()
+
+const $client = service("client").module({
+    required: [$config],
+    optionals: [$auth],
+    factory: ({ config, auth }) => ({
+        apiUrl: config.apiUrl,
+        token: auth?.token ?? null
+    })
+})
+
+const anonymous = $client.request(index($config.of(config))).get()
+const signedIn = $client
+    /*$auth.of(auth) can be omitted here without Typescript complaining, as it is optional in the graph*/
+    .request(index($config.of(config), $auth.of(auth)))
+    .get()
+```
+
+Inside the factory, `auth` is inferred as `{ token: string } | undefined`.
+
+### Nested Request Scopes with ctx(...)
+
+Sometimes a factory needs to run another module with different request params. `ctx(...)` creates that nested request scope. A common case is impersonation: a procedure that starts as one user, then needs to run part of the workflow as another user.
+
+```ts
+const $session = service("session").param<{
+    userId: string
+}>()
+
+const $receiveMoney = service("receiveMoney").module({
+    required: [$session, $db],
+    factory:
+        ({ session, db }) =>
+        async (amount: number) => {
+            const account = await db.accounts.findByUserId(session.userId)
+
+            if (account.userId !== session.userId) {
+                throw new Error(
+                    "Cannot receive money into another user's account"
+                )
+            }
+
+            await db.accounts.update(account.id, {
+                balance: account.balance + amount
+            })
+        }
+})
+
+const $sendMoney = service("sendMoney").module({
+    required: [$session, $db],
+    factory:
+        ({ session, db }, ctx) =>
+        async (toUserId: string, amount: number) => {
+            const senderAccount = await db.accounts.findByUserId(session.userId)
+
+            await db.accounts.update(senderAccount.id, {
+                balance: senderAccount.balance - amount
+            })
+
+            const receiveAsReceiver = ctx($receiveMoney)
+                .request(
+                    index(
+                        $session.of({
+                            userId: toUserId
+                        })
+                    )
+                )
+                .get()
+
+            await receiveAsReceiver(amount)
+        }
+})
+
+const sendMoney = $sendMoney
+    .request(index($session.of({ userId: "sender_1" })))
+    .get()
+
+await sendMoney("receiver_1", 25)
+```
+
+The outer request still sees the sender session, so `$sendMoney` subtracts money from `sender_1`. The nested `ctx($receiveMoney).request(...)` call swaps `$session` to `receiver_1`, so `$receiveMoney` loads and updates the receiver's account under the receiver's permissions. `$db` is inherited from the outer request; only `$session` changes for the nested request scope.
+
+### Initialized Params
+
+Use `.init(value)` when a param has a default but requests should still be able to override it.
+
+```ts
+const $region = service("region").param<"us" | "eu">().init("us")
+
+const $endpoint = service("endpoint").module({
+    required: [$region],
+    factory: ({ region }) =>
+        region === "eu" ? "https://eu.example.com" : "https://us.example.com"
+})
+
+$endpoint.request({}).get()
+// "https://us.example.com"
+
+$endpoint.request(index($region.of("eu"))).get()
+// "https://eu.example.com"
+```
+
+Initialized params remain fully typed, but they become optional in the request shape.
+
+### Provisioning
+
+Call `.provision()` on a module to pre-resolve compatible factories in its dependency graph at module-scope time instead of at request time. "Provision-compatible" factories are those that do not depend on request-time params transitively (or that only depend on initialized params)
 
 ```ts
 const $todos = service("todos").module({
@@ -271,62 +490,74 @@ const $addTodo = service("addTodo").module({
             return todos.get(session.userId)
         }
 })
-```
 
-The factory receives a `supplies` object whose keys are the trademark names of its `required` list — all inferred, no annotations.
-
-**3. Provision once, request per call.** Call `.provision()` on your root module to pre-resolve everything that doesn't depend on a request-time param; supply the open params at the edge with `.request()`.
-
-```ts
 const $app = service("app")
     .module({
         required: [$addTodo],
         factory: ({ addTodo }) => ({ addTodo })
     })
     .provision()
-// ↑ $todos is built once and cached. $session stays open.
 
-server.onRequest((req) => {
-    const app = $app.request(index($session.of({ userId: req.userId }))).get()
-    return app.addTodo(req.todo)
-})
+const app = $app.request(index($session.of({ userId: "ada" }))).get()
+app.addTodo("write README")
 ```
 
-`index(...)` keys a list of suppliers by trademark so TypeScript can match them against the required params. If any required param is missing, `.request()` is a compile error that names it.
+`$todos` can be created once during provisioning. `$session` remains open and is provided at request-time, so $addTodo must wait request-time to run.
 
-> Don't `.provision()` a leaf you never call `.request()` on — it's wasted work. Provision the root.
+### Stub a module with `.of(...)`
 
----
-
-## Reading values back out 📦
-
-`.request()` returns a **supplier**. Beyond `.get()`, it exposes the whole resolved cascade:
+You can call `.of(...)` to provide a value for params, but also for modules. It sets the value of the module directly, without calling its factory.
 
 ```ts
-const supplier = $app.request(index($session.of({ userId: "ada" })))
-
-supplier.get() // → the module's value (a promise if the factory is async)
-supplier.supplies // → { session: {...}, todos: Map, ... } — resolved values keyed by trademark
-supplier.market // → { session: Supplier, todos: Supplier, ... } — the suppliers themselves
+const profile = $profile
+    .request(
+        index(
+            $user.of({ id: "test", name: "Alice" }),
+            $session.of({ userId: "alice-123" })
+        )
+    )
+    .get()
 ```
 
-`supplies` gives unwrapped values; `market` gives the suppliers (call `.get()` on any of them). Both include transitive dependencies, fully typed.
+When you stub a module, its factory is bypassed, but its declared dependencies stay in the graph, so Typescript might force you to provide required params you don't actually need. In those cases, use full alternative implementations with mocks.
 
----
+### Mocking and hiring (Runtime Implementation Swaps)
 
-## Factory lifecycle ♻️
+`.mock(...)` creates a replacement for a module. `.hire(...)` brings that replacement into another module's graph.
 
-Each factory runs **at most once** per `.request()`. The graph resolves lazily and memoizes every result, so a node shared by many downstream consumers is built a single time.
+```ts
+const $user = service("user").module({
+    required: [$session, $db],
+    factory: ({ session, db }) => db.users.findById(session.userId)
+})
 
-If you need to do work repeatedly, return a function from the factory:
+const $profile = service("profile").module({
+    required: [$user],
+    factory: ({ user }) => ({ name: user.name })
+})
+
+const $userMock = $user.mock({
+    required: [],
+    factory: () => ({ id: "test", name: "Alice" })
+})
+
+const profile = $profile.hire($userMock).request({}).get()
+// { name: "Alice" }
+```
+
+`.hire(...)` returns a new module with mocks merged into its graph. A mock may have a smaller, larger, or different dependency shape than the module it replaces. The request type updates accordingly.
+
+## Factory Lifecycle
+
+Each factory runs at most once per request snapshot. A shared dependency used by many downstream modules is computed once and then reused. Thus, factories should be pure and not perform any side-effects. If you need to run side-effects, just return a function from the factory:
 
 ```ts
 const $findUser = service("findUser").module({
     required: [$db],
     factory: ({ db }) => {
-        const cache = new Map() // ← runs once per request
+        const cache = new Map<string, User>()
+
         return (id: string) => {
-            // ← runs every time you call the returned fn
             if (cache.has(id)) return cache.get(id)
             const user = db.findUser(id)
             cache.set(id, user)
@@ -336,201 +567,69 @@ const $findUser = service("findUser").module({
 })
 ```
 
-### Eager, lazy, and warmed 🌡️
+## How it works under the hood
 
-Tune _when_ expensive work in a cascade happens:
-
-```ts
-import { once } from "@paramodules/core"
-
-// Eager — kicked off when the cascade resolves, in parallel with sibling nodes
-const $eager = service("eager").module({
-    required: [$db],
-    factory: ({ db }) => buildExpensive(db)
-})
-
-// Lazy — deferred until someone calls the returned function
-const $lazy = service("lazy").module({
-    required: [$db],
-    factory: ({ db }) => once(() => buildExpensive(db))
-})
-
-// Warmed — lazy in shape, eager at the entry point.
-// Flip between the two without changing call sites.
-const $warm = service("warm").module({
-    required: [$db],
-    factory: ({ db }) => once(() => buildExpensive(db)),
-    warmup: (build) => build()
-})
-```
-
-`once(fn)` memoizes both the result and any thrown error, so the wrapped work runs exactly once. `warmup` receives the factory's return value (here, the lazy `build`) and is invoked right after the factory — at `request()` time, or at `provision()` time for param-independent nodes.
-
----
-
-## Optionals 🔌
-
-When a node can _use_ an input if it's available but doesn't strictly need it, put it in `optionals`. Optional values are typed `T | undefined` and don't have to be supplied to `request()`.
-
-```ts
-const $api = service("api").module({
-    required: [$config],
-    optionals: [$userAuth], // ← present when logged in, absent otherwise
-    factory: ({ config, userAuth }) => ({
-        url: config.url,
-        token: userAuth?.token ?? null
-    })
-})
-```
-
-Ideal for feature flags, optional auth context, caching layers — anything "nice to have" that should still keep the cascade well-typed.
-
----
-
-## Context propagation: `ctx` 🔭
-
-Inside any factory you receive a `ctx` argument as the second parameter. `ctx($module).request(...)` re-resolves part of the cascade with different inputs — immutably, without leaving the factory, without globals, and without losing type safety. It's how a module reshapes its own dependency stack on the fly.
-
-A realistic example: an admin endpoint fetching _another_ user's profile by temporarily swapping `$session`, with zero duplication of the profile logic.
-
-```ts
-const $session = service("session").param<{ userId: string }>()
-const $db = service("db").param<Database>()
-
-const $userProfile = service("userProfile").module({
-    required: [$session, $db],
-    factory: ({ session, db }) => db.profiles.findById(session.userId)
-})
-
-const $impersonate = service("impersonate").module({
-    required: [$session, $db],
-    factory: ({ session, db }, ctx) => {
-        const admin = db.users.findById(session.userId)
-        if (!admin.isAdmin) throw new Error("Forbidden")
-
-        // Re-resolve $userProfile with the target user's session.
-        // Reference $userProfile from module scope — no need to put it in required[].
-        return (targetUserId: string) =>
-            ctx($userProfile)
-                .request(index($session.of({ userId: targetUserId })))
-                .get()
-        // $db is reused from the outer request — only $session changes.
-    }
-})
-```
-
-`$userProfile`'s factory runs once with the _target_ session; the database connection and every other shared node are reused from the outer snapshot. Worth knowing:
-
-- `ctx($module).request(...)` never re-requires params already supplied upstream — you only pass what you want to change.
-- Passing `undefined` for a key (`{ [$x.tm]: undefined }`) _erases_ an inherited supplier, forcing that subtree to rebuild from its own factory.
-- `ctx($param)` on a param is a no-op — it returns the param.
-
----
-
-## Testing, mocking & A/B testing 🧪
-
-### Stub a value with `.of()`
-
-Stamp a concrete value onto a module to bypass its factory. The params it normally required stay in the tree (the cascade shape is unchanged), so they must still be supplied — TypeScript just won't call the factory.
-
-```ts
-const $profile = $profileModule
-    .request(
-        index(
-            $user.of({ name: "Alice", createdAt: new Date("2024-01-01") }),
-            $session.of({ userId: "alice-123" }) // still required: it's still in the tree
-        )
-    )
-    .get()
-```
-
-### Reroute a cascade with `.mock()` + `.hire()`
-
-For richer replacements — ones with their own dependency shape, or that _shrink_ what `request()` needs — define a `.mock(...)` and bring it in with `.hire(...)`:
-
-```ts
-// A mock $user that needs nothing from the caller
-const $userMock = $user.mock({
-    required: [],
-    factory: () => ({ name: "Alice" })
-})
-
-// $session is no longer required — the subtree under $user collapsed
-const profile = $profile.hire($userMock).request({}).get()
-```
-
-`.hire(...)` takes multiple mocks and works inside factories too (`ctx($m).hire($mock).request(...)`). Same primitive for A/B testing, sandboxing, feature flags, and runtime swaps — the cascade reroutes, the call sites don't move.
-
----
-
-## Compile-time safety nets 🛡️
-
-Paramodules catches two classes of wiring mistakes as type errors, before runtime:
-
-- **Circular dependencies** — if a node ends up depending on itself, directly or transitively (including through a mock), the result type widens to `CircularModuleError` and construction throws `"Circular dependency detected"`.
-- **Duplicate trademarks** — if `.hire(...)` receives two mocks with the same trademark, the result widens to `DuplicateServiceError`.
-
-```ts
-import type {
-    CircularModuleError,
-    DuplicateServiceError
-} from "@paramodules/core"
-```
-
-Missing or mistyped params in `request()` are ordinary type errors that name the exact trademark.
-
----
-
-## How it works under the hood 🔩
-
-When you call `.request({})`, paramodules builds a single self-referential, lazily evaluated flat object:
+When you call `$requestedModule.request({})`, paramodules builds a self-referential, lazily evaluated flat registry of all transitive dependencies of the requested module:
 
 ```ts
 const registry = {
-    paramA, // params are placed in directly
-    paramB,
+    paramSupplierA, // params are placed in directly
+    paramSupplierB,
 
-    // modules wrap themselves in once() and pull from the same market
-    moduleA: once(() => $moduleA._resolve(registry)),
-    moduleB: once(() => $moduleB._resolve(registry))
+    // modules receive the registry via closure injection and use it to auto-resolve themselves lazily
+    moduleSupplierA: once(() => $moduleA._resolve(registry)),
+    moduleSupplierB: once(() => $moduleB._resolve(registry))
 }
 ```
 
-Because every node lives in the same object, TypeScript can statically follow types across the whole cascade. Because every node is memoized, each factory runs exactly once per request. Because the object is local, there's no global state — every `request()` is its own little universe. Newly resolved factories are kicked off in the background so eager work overlaps; errors are swallowed there and re-thrown on real access.
+Because every node lives in the same object, TypeScript can statically follow types across the whole cascade. Because every node is memoized, each factory runs exactly once per request. Because the object is local, there's no global state — every `request()` is its own little universe.
 
 That's the whole trick. There is no container — the graph _is_ the value.
 
 ---
 
-## API reference 📖
+---
 
-### `service(name)`
+## API Reference
+
+### `service(tm)`
 
 ```ts
 const $session = service("session")
 ```
 
-The entry point. `name` follows JS identifier rules — letters, digits, `_`, `$`; no leading digit — and becomes the service's trademark (`tm`). The `$` prefix on variables is just convention. From here call `.param<T>()` or `.module({...})`.
+The entry point. `tm` must be a valid JavaScript identifier: letters, digits, `_`, or `$`, with no leading digit, as it'll be transformed as a plain JS variable. The `$` prefix on variables is only a convention to easily distinguish services from values.
 
-### `.param<T>(opts?)`
+### `.param<T>()`
 
 ```ts
 const $session = service("session").param<{ userId: string }>()
 ```
 
-A typed slot for an external value — the source of a cascade. No factory; the caller provides a value via `.of()`. The optional `{ context }` stores an opaque handle for framework adapters (see the UI mutation cascades section); core never interprets it.
+Creates a typed runtime input. Provide it to a request with `.of(value)`.
 
-### `.module({ required?, optionals?, factory, warmup?, context? })`
+### `.init(value)`
+
+```ts
+const $region = service("region").param<"us" | "eu">().init("us")
+```
+
+Sets a default value for a param. Modules that require an initialized param can be requested without supplying it, while callers may still override it with `.of(...)`.
+
+### `.module({ required?, optionals?, factory, warmup? })`
 
 ```ts
 const $user = service("user").module({
     required: [$session, $db],
     optionals: [$logger],
-    factory: ({ session, db, logger }) => db.users.findById(session.userId)
+    factory: ({ session, db, logger }) => db.users.findById(session.userId),
+    warmup: (userPromise) => {
+        void userPromise
+    }
 })
 ```
 
-A cascade node. `required` deps are typed `T`; `optionals` are typed `T | undefined` and needn't be supplied. The factory receives `(supplies, ctx)`. `warmup(value, supplies)` eagerly invokes a lazy factory result.
+Creates a module. `required` values are inferred as present. `optionals` are inferred as `T | undefined`. The factory receives `(supplies, ctx)`.
 
 ### `.of(value)`
 
@@ -538,40 +637,39 @@ A cascade node. `required` deps are typed `T`; `optionals` are typed `T | undefi
 const supplier = $session.of({ userId: "ada" })
 ```
 
-Stamp a concrete value onto a param (provides it) or a module (bypasses its factory). Returns a **supplier**. Params the module still lists in `required` remain in the tree and must be supplied to `request()`.
+Creates a supplier for a concrete param or module value. For modules, this bypasses the factory but does not remove the module's declared dependency shape.
 
-### `.request(supplies)`
+### `.request(suppliers)`
 
 ```ts
-const supplier = $app.request(
-    index($session.of({ userId: "ada" }), $db.of(database))
-)
+const supplier = $app.request(index($session.of({ userId: "ada" })))
 ```
 
-Resolve the cascade for one input set. Takes a keyed map (build it with `index(...)`), returns a supplier, errors at compile time if a required param is missing. Each factory runs at most once.
+Resolves a module for one input set and returns a supplier. `.request(...)` takes a plain object keyed by trademark; `index(...)` is just the type-safe helper for building that object from suppliers.
 
 ### `.provision()`
 
 ```ts
 const $app = service("app")
     .module({
-        /* … */
+        required: [$router],
+        factory: ({ router }) => ({ router })
     })
     .provision()
 ```
 
-Greedily resolve everything in the graph that doesn't depend on a param, caching it forever. Call it on your root module; only open params remain to be supplied at request time.
+Pre-resolves graph parts that do not depend on open params. Call it on roots you will later request.
 
-### `.mock({ required?, optionals?, factory, warmup? })`
+### `.mock(plan)`
 
 ```ts
 const $userMock = $user.mock({
     required: [],
-    factory: () => ({ name: "Alice" })
+    factory: () => ({ id: "test", name: "Alice" })
 })
 ```
 
-A drop-in replacement for a module with a different factory and (optionally) a different dependency shape. A mock can't go in another module's `required` array — bring it in with `.hire()`.
+Creates a replacement module with the same trademark and a compatible value type.
 
 ### `.hire(...mocks)`
 
@@ -579,55 +677,54 @@ A drop-in replacement for a module with a different factory and (optionally) a d
 const profile = $profile.hire($userMock).request({}).get()
 ```
 
-Return a new module with the mocks merged into its tree, collapsing any dependencies they removed. Call sites are unchanged. Two mocks sharing a trademark is a `DuplicateServiceError` at the type level.
+Returns a new module with mocks merged into its dependency tree. Hired modules override matching trademarks.
+
+### `ctx(service)`
+
+```ts
+const value = ctx($otherModule)
+    .request(index($param.of(next)))
+    .get()
+```
+
+Creates a nested request scope from inside a factory so another module can be requested with different params without mutating the outer request.
 
 ### `supplier.get()`
 
 ```ts
-const user = $user
-    .request(index($session.of({ userId: "ada" }), $db.of(database)))
-    .get()
+const value = supplier.get()
 ```
 
-Resolve and return the value. Returns a promise if the factory is async.
+Reads the supplier's value. If the factory returns a promise, `get()` returns that promise.
 
 ### `supplier.supplies`
 
 ```ts
-supplier.supplies // → { session: { userId: "ada" }, db: Database, ... }
+supplier.supplies.session
+supplier.supplies.profile
 ```
 
-The resolved value of every node in the cascade, keyed by trademark (transitive deps included).
+Resolved values for the graph, keyed by trademark.
 
 ### `supplier.market`
 
 ```ts
-supplier.market[$db.tm].get() // → Database
+supplier.market.profile.get()
 ```
 
-The supplier of every node, keyed by trademark — call `.get()` to read each lazily.
+Suppliers for the graph, keyed by trademark.
 
 ### `index(...suppliers)`
 
 ```ts
-$app.request(index($session.of({ userId: "ada" }), $db.of(database)))
+$app.request(index($session.of({ userId: "ada" })))
 ```
 
-Key a list of suppliers by trademark, producing the map `request()` expects. Without it you'd key them by hand: `{ session: $session.of(...), db: $db.of(...) }`.
-
-### `once(fn)` and `sleep(ms)`
-
-```ts
-import { once, sleep } from "@paramodules/core"
-```
-
-`once(fn)` returns a memoized `fn` that runs at most once, caching its result and any thrown error — the building block for lazy and warmed nodes. `sleep(ms)` resolves after `ms` milliseconds.
-
----
+Builds the keyed request object expected by `.request(...)`. You can write that object by hand, but `index(...)` keeps the supplier keys and types aligned with their trademarks.
 
 ## Contributing
 
-Issues and PRs welcome. 🙏
+Issues and PRs welcome.
 
 ## License
 
