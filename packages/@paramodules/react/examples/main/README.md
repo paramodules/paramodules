@@ -1,60 +1,115 @@
-# 🚀 @typectx/react example
+# @paramodules/react example
 
-This example showcases a basic social media wireframe built with @typectx/react dependency injection patterns, demonstrating how to eliminate prop-drilling while maintaining type safety and testability.
+A small social feed wireframe that shows how `@paramodules/react` connects
+paramodules to React Context. Components are paramodules modules; params like
+`currentPost` and `userState` flow through the tree with `ParamsProvider` instead
+of prop drilling.
 
-A preview browser should automatically show up, but if it doesn't, simply click on the Terminal icon in the sidebar, then click on 3001 under PREVIEWS.
+Run it on port **3001**:
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-
-## 🏗️ Architecture Overview
-
-```
-src/
-├── components/        # UI components as App Services
-│   ├── app.tsx       # Main app component
-│   ├── comment.tsx   # Comment component
-│   ├── feed.tsx      # Feed component
-│   ├── post.tsx      # Post component
-│   ├── reply.tsx     # Reply component
-│   └── session.tsx   # Session management component
-├── api.ts            # API service definitions and data fetching
-├── req.ts            # Request data used globally
-├── index.css         # Global styles
-├── main.tsx          # Application entry point
-├── hooks.ts          # Stability/debug helper hooks for the demo
-└── query.ts          # React Query initialization
+```bash
+pnpm dev
 ```
 
-## 📚 Learning Path
+From the monorepo root:
 
-1. **Explore `src/api.ts`** - See how to integrate react-query for data loading and preloading
-2. **Check `src/req.ts`** - See how request services are defined with `service(...).request()`.
-3. **Review `src/components/`** - Understand how to create components as app services with JSX
-4. **Examine `src/main.tsx`** - See how everything is assembled and used
-5. **Experiment with the live demo** - Notice the absence of waterfall loading
-
-## 📖 Related Documentation
-
-- [typectx Core Library](https://github.com/typectx/typectx)
-- [typectx Documentation](https://github.com/typectx/typectx#readme)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```bash
+pnpm --filter @paramodules/react.example dev
+```
 
 ---
 
-**Built with ❤️ using [typectx](https://github.com/typectx/typectx) - Fully type-inferred Context and DI container for Typescript**
+## What this demo shows
+
+- **Modules as components** — each UI piece is a `service(...).module({ factory })` that returns a React component.
+- **Context params** — `$currentPost` and `$userState` are declared with `@paramodules/react`'s `service().param()` so they carry a React Context.
+- **`useSupplies`** — each component reads its dependency graph in one call, like typed `useContext` for the whole module.
+- **Subtree scopes** — `Feed` wraps each post in a `ParamsProvider`; `Post` can override `userState` for its own branch.
+- **Async loading** — `$usersPromise` and `$postsPromise` are async modules consumed with React `Suspense` and `use()`.
+
+Open the app and try switching the session user on a post. Replies deep in the
+tree update without any props passed through `Comment`.
+
+---
+
+## Project layout
+
+```
+src/
+├── context.ts          # Context params ($currentPost, $userState)
+├── api.ts              # Mock data and async loader modules
+├── components/
+│   ├── app.tsx         # Root layout, app-level ParamsProvider
+│   ├── feed.tsx        # Lists posts, scopes currentPost per item
+│   ├── post.tsx        # Post card, optional per-post userState override
+│   ├── comment.tsx     # Comment list
+│   ├── reply.tsx       # Reads currentPost + userState from context
+│   └── session.tsx     # Session switcher UI
+├── main.tsx            # Requests $App and mounts the tree
+└── index.css           # Tailwind entry
+```
+
+---
+
+## Suggested reading order
+
+1. **`src/context.ts`** — params that should propagate through React.
+2. **`src/api.ts`** — plain paramodules modules (async data, no Context).
+3. **`src/components/reply.tsx`** — a leaf component that reads context params via `useSupplies`.
+4. **`src/components/feed.tsx`** — `ParamsProvider` scopes `currentPost` per post.
+5. **`src/components/post.tsx`** — nested provider overrides `userState` for one post subtree.
+6. **`src/components/app.tsx`** — root provider and composition of `Feed` + `SelectSession`.
+7. **`src/main.tsx`** — entry point: `$App.request({}).get()`.
+
+---
+
+## Key patterns
+
+### Request the root module
+
+```tsx
+const App = $App.request({}).get()
+createRoot(document.getElementById("root")!).render(<App />)
+```
+
+No custom bootstrap layer — the root component comes straight from the
+paramodules graph.
+
+### Read supplies inside a component
+
+```tsx
+factory: (initSupplies) =>
+    function Reply({ reply }) {
+        const { currentPost, userStateContext } = useSupplies(
+            $Reply,
+            initSupplies
+        )
+        // ...
+    }
+```
+
+Context params resolve from the nearest `ParamsProvider`. Other dependencies
+resolve from `initSupplies` (the graph paramodules built at request time).
+
+### Open a param scope for a subtree
+
+```tsx
+<ParamsProvider for={$Post} params={index($currentPost.of(post))}>
+    <Post />
+</ParamsProvider>
+```
+
+The `for` prop types which params you may supply.
+
+---
+
+## Related docs
+
+- [@paramodules/react README](../../main/README.md)
+- [paramodules core](https://github.com/paramodules/core)
+
+---
+
+## License
+
+MIT
