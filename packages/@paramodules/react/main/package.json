@@ -3,19 +3,16 @@
     "type": "module",
     "version": "0.0.0",
     "description": "Hooks to synchronize React client components with paramodules",
-    "main": "dist/index.cjs",
-    "module": "dist/index.js",
-    "types": "dist/index.d.ts",
     "sideEffects": false,
     "author": "@paramodules",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/paramodules/core.git"
+        "url": "git+https://github.com/paramodules/paramodules.git"
     },
-    "homepage": "https://github.com/paramodules/core/tree/main/packages/@paramodules/react/main#readme",
+    "homepage": "https://github.com/paramodules/paramodules/tree/main/packages/@paramodules/react/main#readme",
     "bugs": {
-        "url": "https://github.com/paramodules/core/issues"
+        "url": "https://github.com/paramodules/paramodules/issues"
     },
     "imports": {
         "#*": "./src/*.ts"
@@ -38,8 +35,8 @@
         "access": "public"
     },
     "devDependencies": {
-        "@paramodules/config.eslint": "*",
-        "@paramodules/config.typescript": "*",
+        "@paramodules/config.eslint": "workspace:*",
+        "@paramodules/config.typescript": "workspace:*",
         "@types/react": "^19.2.6",
         "paramodules": "workspace:^",
         "typescript": "^6.0.2",
