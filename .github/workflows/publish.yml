@@ -61,7 +61,7 @@ jobs:
             - name: Download @paramodules/react build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: "@paramodules/react-build"
+                  name: "@paramodules-react-build"
                   path: ./packages/@paramodules/react/main/dist
 
             - name: Set version from release tag
