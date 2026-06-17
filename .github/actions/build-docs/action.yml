@@ -1,0 +1,33 @@
+name: Build docs
+description: Build the docs site and verify output
+
+inputs:
+    build_path:
+        description: Path to the docs build output
+        required: false
+        default: packages/@paramodules/docs/build
+    upload_pages_artifact:
+        description: Upload the build for GitHub Pages deployment
+        required: false
+        default: "false"
+
+runs:
+    using: composite
+    steps:
+        - name: Build docs website
+          run: pnpm run build --filter=@paramodules/docs
+          shell: bash
+
+        - name: Verify sitemap exists
+          run: test -f "${{ inputs.build_path }}/sitemap.xml"
+          shell: bash
+
+        - name: Setup Pages
+          if: ${{ inputs.upload_pages_artifact == 'true' }}
+          uses: actions/configure-pages@v5
+
+        - name: Upload Pages artifact
+          if: ${{ inputs.upload_pages_artifact == 'true' }}
+          uses: actions/upload-pages-artifact@v4
+          with:
+              path: ${{ inputs.build_path }}

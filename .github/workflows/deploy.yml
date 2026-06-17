@@ -9,7 +9,14 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
+    validate-tag:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/validate-tag
+
     gate:
+        needs: validate-tag
         runs-on: ubuntu-latest
         if: contains(github.event.release.tag_name, '-') == false ||
             contains(github.event.release.tag_name, 'docs')
@@ -19,15 +26,26 @@ jobs:
 
     test:
         needs: gate
-        uses: ./.github/workflows/test.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
 
     build-pages:
         needs: gate
-        uses: ./.github/workflows/build-pages.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
 
-    validate-tag:
-        needs: gate
-        uses: ./.github/workflows/validate-tag.yml
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/build-docs
+              with:
+                  upload_pages_artifact: "true"
 
     deploy-pages:
         environment:
@@ -49,8 +67,7 @@ jobs:
         needs: [test, build-pages, validate-tag]
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout
-              uses: actions/checkout@v5
+            - uses: actions/checkout@v5
               with:
                   token: ${{ secrets.PARAMODULES_PROTECTED_REF_ADMIN }}
 

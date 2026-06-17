@@ -9,7 +9,15 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
+    validate-tag:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/validate-tag
+
     resolve-tag:
+        needs: validate-tag
         runs-on: ubuntu-latest
         outputs:
             tag_name: ${{ steps.resolve.outputs.tag_name }}
@@ -45,18 +53,44 @@ jobs:
 
     test:
         needs: gate
-        uses: ./.github/workflows/test.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
 
     build-pkg:
         needs: gate
-        uses: ./.github/workflows/build-pkg.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        strategy:
+            matrix:
+                include:
+                    - filter: paramodules
+                      dist_path: packages/@paramodules/core/dist
+                      artifact_name: paramodules-build
 
-    validate-tag:
-        needs: gate
-        uses: ./.github/workflows/validate-tag.yml
+                    - filter: "@paramodules/react"
+                      dist_path: packages/@paramodules/react/main/dist
+                      artifact_name: "@paramodules-react-build"
+
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
+            - uses: ./.github/actions/build-pkg
+              with:
+                  filter: ${{ matrix.filter }}
+                  dist_path: ${{ matrix.dist_path }}
+                  artifact_name: ${{ matrix.artifact_name }}
+                  upload_artifact: "true"
 
     publish-pkg:
-        needs: [resolve-tag, test, build-pkg, validate-tag]
+        needs: [resolve-tag, gate, test, build-pkg]
         if: contains(needs.resolve-tag.outputs.tag_name, 'docs') == false
         environment:
             name: npm-publish
@@ -79,16 +113,10 @@ jobs:
                       working_directory: packages/@paramodules/react/main
 
         steps:
-            - name: Checkout
-              uses: actions/checkout@v5
+            - uses: actions/checkout@v5
 
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
+            - uses: ./.github/actions/setup
               with:
-                  node-version: "lts/*"
                   registry-url: "https://registry.npmjs.org"
                   package-manager-cache: false # intentional: avoid stale cache on publish
 
@@ -98,21 +126,16 @@ jobs:
                   name: ${{ matrix.artifact_name }}
                   path: ${{ matrix.artifact_path }}
 
-            - name: Set version from release tag
+            - name: Set workspace package versions
               run: |
                   VERSION="${{ needs.resolve-tag.outputs.tag_name }}"
                   VERSION="${VERSION#v}"
                   echo "Setting version to: $VERSION"
-                  echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-            - name: Set package version
-              working-directory: ${{ matrix.working_directory }}
-              run: |
-                  npm version $VERSION --no-git-tag-version
-                  echo "${{ matrix.package }} version is now: $(cat package.json | jq -r .version)"
-
-            - name: Install dependencies to resolve workspace:^
-              run: pnpm install
+                  pnpm \
+                      --filter paramodules \
+                      --filter "@paramodules/react" \
+                      exec npm version "$VERSION" --no-git-tag-version
 
             - name: Publish ${{ matrix.package }}
               working-directory: ${{ matrix.working_directory }}

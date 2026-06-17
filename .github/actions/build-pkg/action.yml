@@ -1,0 +1,36 @@
+name: Build package
+description: Build a workspace package, verify its dist output, and optionally upload it
+
+inputs:
+    filter:
+        description: pnpm filter for the package to build
+        required: true
+    dist_path:
+        description: Path to the package dist directory
+        required: true
+    artifact_name:
+        description: Name for the uploaded build artifact
+        required: false
+        default: ""
+    upload_artifact:
+        description: Upload the build as a workflow artifact
+        required: false
+        default: "false"
+
+runs:
+    using: composite
+    steps:
+        - name: Build ${{ inputs.filter }}
+          run: pnpm run build --filter=${{ inputs.filter }}
+          shell: bash
+
+        - name: Verify ${{ inputs.dist_path }}/index.js exists
+          run: test -f "${{ inputs.dist_path }}/index.js"
+          shell: bash
+
+        - name: Upload ${{ inputs.filter }} build artifacts
+          if: ${{ inputs.upload_artifact == 'true' }}
+          uses: actions/upload-artifact@v4
+          with:
+              name: ${{ inputs.artifact_name }}
+              path: ${{ inputs.dist_path }}

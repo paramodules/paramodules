@@ -5,13 +5,24 @@ on:
         branches: [main]
 
 jobs:
-    test:
-        uses: ./.github/workflows/test.yml
+    pr-check:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
 
-    build-pkg:
-        needs: test
-        uses: ./.github/workflows/build-pkg.yml
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
 
-    build-pages:
-        needs: test
-        uses: ./.github/workflows/build-pages.yml
+            - uses: ./.github/actions/build-pkg
+              with:
+                  filter: paramodules
+                  dist_path: packages/@paramodules/core/dist
+
+            - uses: ./.github/actions/build-pkg
+              with:
+                  filter: "@paramodules/react"
+                  dist_path: packages/@paramodules/react/main/dist
+
+            - uses: ./.github/actions/build-docs
