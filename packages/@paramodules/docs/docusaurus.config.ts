@@ -14,7 +14,7 @@ const config: Config = {
     },
 
     url: "https://paramodules.github.io",
-    baseUrl: "/core/",
+    baseUrl: "/paramodules/",
 
     organizationName: "paramodules",
     projectName: "paramodules",
