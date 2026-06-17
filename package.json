@@ -1,5 +1,5 @@
 {
-    "name": "typectx-monorepo",
+    "name": "@paramodules-monorepo",
     "private": true,
     "type": "module",
     "scripts": {

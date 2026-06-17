@@ -1,0 +1,9 @@
+{
+    "extends": "@docusaurus/tsconfig",
+    "compilerOptions": {
+        "ignoreDeprecations": "6.0",
+        "baseUrl": "."
+    },
+    "include": ["src/**/*", "docusaurus.config.ts", "navbarIcons.ts"],
+    "exclude": [".docusaurus", "build", "node_modules"]
+}

@@ -1,1 +1,1 @@
-./packages/typectx/README.md
+packages/@paramodules/core/README.md

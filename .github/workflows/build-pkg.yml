@@ -25,21 +25,21 @@ jobs:
 
             - name: Build packages
               run: |
-                  pnpm run build --filter=typectx
-                  pnpm run build --filter=@typectx/react
+                  pnpm run build --filter=paramodules
+                  pnpm run build --filter=@paramodules/react
 
-            - name: Upload typectx build artifacts
+            - name: Upload paramodules build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: typectx-build
+                  name: "paramodules-build"
                   path: |
-                      packages/typectx/dist
+                      packages/paramodules/dist
 
-            - name: Upload @typectx/react build artifacts
+            - name: Upload @paramodules/react build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: "typectx-react-build"
+                  name: "@paramodules/react-build"
                   path: |
-                      packages/@typectx/react/main/dist
+                      packages/@paramodules/react/main/dist

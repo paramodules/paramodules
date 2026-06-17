@@ -1,0 +1,54 @@
+{
+    "name": "@paramodules/react",
+    "type": "module",
+    "version": "0.0.0",
+    "description": "Hooks to synchronize React client components with paramodules",
+    "main": "dist/index.cjs",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "sideEffects": false,
+    "author": "@paramodules",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/paramodules/core.git"
+    },
+    "homepage": "https://github.com/paramodules/core/tree/main/packages/@paramodules/react/main#readme",
+    "bugs": {
+        "url": "https://github.com/paramodules/core/issues"
+    },
+    "imports": {
+        "#*": "./src/*.ts"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "watch": "tsup --watch"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "devDependencies": {
+        "@paramodules/config.eslint": "*",
+        "@paramodules/config.typescript": "*",
+        "@types/react": "^19.2.6",
+        "paramodules": "workspace:^",
+        "typescript": "^6.0.2",
+        "tsup": "^8.5.0",
+        "turbo": "^2.5.5"
+    },
+    "peerDependencies": {
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3",
+        "paramodules": "workspace:^"
+    }
+}

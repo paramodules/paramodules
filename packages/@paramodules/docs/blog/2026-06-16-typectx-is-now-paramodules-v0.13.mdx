@@ -1,0 +1,30 @@
+---
+title: "typectx is now paramodules v0.13!"
+slug: typectx-is-now-paramodules-v0.13
+authors:
+    - name: Félix Dubé
+      title: "@someone635"
+      url: https://github.com/someone635
+hide_table_of_contents: false
+---
+
+Big news: `typectx` is now `paramodules`!
+
+This is the v0.13 release, and it marks the point where the project finally has a name that matches what it has become: **stateless, parametrizable runtime modules for cascading TypeScript applications.**
+
+{/* truncate */}
+
+typectx started as a typed context container. Over time, the core idea became clearer: the useful primitive is not just "context." It is request-time modules that carry their dependency graph, can be requested with concrete params, and lets TypeScript infer the cascade from the entry point all the way down.
+
+The React adapter has also found a clearer role. It is no longer trying to be a Context replacement. React Context is already the right primitive for broadcasting values through a tree. `@paramodules/react` now wraps Context with a nicer, graph-integrated API: declare params with `service(...).param()`, provide them with `ParamsProvider`, and read them through `useSupplies(...)` alongside the rest of a module's dependencies.
+
+This release unfortunately doesn't preserve backwards-compatibility again, no such stability will be provided before v1. So let's not try to make a migration guide, as all APIs have changed or been renamed,
+just take a look at the simplified docs for the new model, examples, and current API:
+
+[Read the paramodules docs](https://paramodules.github.io/core/)
+
+---
+
+- [paramodules on GitHub](https://github.com/paramodules/core)
+- [paramodules on npm](https://www.npmjs.com/package/paramodules)
+- [@paramodules/react on npm](https://www.npmjs.com/package/@paramodules/react)

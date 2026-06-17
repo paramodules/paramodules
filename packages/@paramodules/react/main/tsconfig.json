@@ -1,0 +1,14 @@
+{
+    "extends": "@paramodules/config.typescript",
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "target": "ES2020",
+        "lib": ["ES2023", "DOM"],
+        "declaration": true,
+        "declarationMap": true,
+        "outDir": "./dist",
+        "rootDir": "."
+    },
+    "include": ["src/**/*", "tests/**/*"],
+    "exclude": ["node_modules", "dist"]
+}
