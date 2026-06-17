@@ -215,10 +215,10 @@ importers:
         version: 19.2.7(react@19.2.7)
     devDependencies:
       '@paramodules/config.eslint':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../config/eslint
       '@paramodules/config.typescript':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../config/typescript
       '@types/react':
         specifier: ^19.2.6

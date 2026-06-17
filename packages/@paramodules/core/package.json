@@ -3,15 +3,12 @@
     "type": "module",
     "version": "0.0.0",
     "description": "Stateless, parametrizable runtime modules — type-inferred primitives for cascading full-stack application architecture.",
-    "main": "dist/index.cjs",
-    "module": "dist/index.js",
-    "types": "dist/index.d.ts",
     "sideEffects": false,
     "author": "@paramodules",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/paramodules/core.git"
+        "url": "git+https://github.com/paramodules/paramodules.git"
     },
     "imports": {
         "#*": "./src/*.ts"
