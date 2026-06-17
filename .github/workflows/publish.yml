@@ -62,7 +62,7 @@ jobs:
             - uses: ./.github/actions/test
 
     build-pkg:
-        needs: gate
+        needs: test
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -79,9 +79,7 @@ jobs:
 
         steps:
             - uses: actions/checkout@v5
-
             - uses: ./.github/actions/setup
-            - uses: ./.github/actions/test
             - uses: ./.github/actions/build-pkg
               with:
                   filter: ${{ matrix.filter }}
@@ -90,7 +88,7 @@ jobs:
                   upload_artifact: "true"
 
     publish-pkg:
-        needs: [resolve-tag, gate, test, build-pkg]
+        needs: [resolve-tag, build-pkg]
         if: contains(needs.resolve-tag.outputs.tag_name, 'docs') == false
         environment:
             name: npm-publish
