@@ -1,0 +1,77 @@
+.page {
+    min-height: calc(100vh - var(--ifm-navbar-height));
+    background:
+        radial-gradient(
+            120% 120% at 20% 0%,
+            rgba(26, 209, 255, 0.22) 0%,
+            rgba(5, 8, 16, 0) 55%
+        ),
+        #05080f;
+}
+
+.hero {
+    padding: clamp(4.5rem, 10vw, 7rem) 0 3rem;
+    text-align: center;
+}
+
+.eyebrow {
+    margin-bottom: 1rem;
+    color: #7ce8ff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.title {
+    max-width: 760px;
+    margin: 0 auto 1.25rem;
+    background: linear-gradient(120deg, #c7f7ff 0%, #48dbff 40%, #0f8ff0 85%);
+    background-clip: text;
+    color: transparent;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.12;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    max-width: 640px;
+    margin: 0 auto 2rem;
+    color: rgba(224, 239, 255, 0.86);
+    font-size: 1.15rem;
+    line-height: 1.7;
+}
+
+.sandboxSection {
+    padding: 0 0 clamp(4rem, 8vw, 6rem);
+}
+
+.sandboxFrame {
+    overflow: hidden;
+    min-height: 720px;
+    border: 1px solid rgba(124, 232, 255, 0.18);
+    border-radius: 24px;
+    background: rgba(5, 12, 24, 0.75);
+    box-shadow: 0 32px 70px rgba(2, 10, 24, 0.62);
+}
+
+.sandboxFrame iframe {
+    display: block;
+    width: 100%;
+    height: min(80vh, 860px);
+    min-height: 720px;
+    border: 0;
+}
+
+@media (max-width: 640px) {
+    .hero {
+        padding-top: 3.5rem;
+    }
+
+    .sandboxFrame,
+    .sandboxFrame iframe {
+        min-height: 620px;
+    }
+}
