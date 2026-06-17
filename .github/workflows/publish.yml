@@ -117,7 +117,7 @@ jobs:
               run: |
                   pnpm publish --tag alpha --no-git-checks
 
-              - name: Publish @paramodules/react to Alpha
+            - name: Publish @paramodules/react to Alpha
               if: contains(github.event.release.tag_name, 'alpha')
               working-directory: ./packages/@paramodules/react/main
               run: |
