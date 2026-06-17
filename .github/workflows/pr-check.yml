@@ -17,6 +17,7 @@ jobs:
 
     build-pkg:
         needs: test
+        runs-on: ubuntu-latest
         strategy:
             matrix:
                 include:
@@ -34,6 +35,7 @@ jobs:
 
     build-docs:
         needs: test
+        runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/setup
