@@ -34,7 +34,7 @@ jobs:
               with:
                   name: "paramodules-build"
                   path: |
-                      packages/paramodules/dist
+                      packages/@paramodules/core/dist
 
             - name: Upload @paramodules/react build artifacts
               if: ${{ github.event_name == 'release' }}
