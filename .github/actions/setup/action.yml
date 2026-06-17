@@ -1,0 +1,37 @@
+name: Setup
+description: Checkout, install pnpm and Node.js, and install dependencies
+
+inputs:
+    registry-url:
+        description: Optional registry URL for npm publishing.
+        required: false
+        default: ""
+    package-manager-cache:
+        description: Whether actions/setup-node should cache package manager data.
+        required: false
+        default: "true"
+
+runs:
+    using: composite
+    steps:
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v4
+
+        - name: Setup Node.js
+          if: ${{ inputs.registry-url == '' }}
+          uses: actions/setup-node@v5
+          with:
+              node-version: "lts/*"
+              package-manager-cache: ${{ inputs.package-manager-cache }}
+
+        - name: Setup Node.js for registry
+          if: ${{ inputs.registry-url != '' }}
+          uses: actions/setup-node@v5
+          with:
+              node-version: "lts/*"
+              registry-url: ${{ inputs.registry-url }}
+              package-manager-cache: ${{ inputs.package-manager-cache }}
+
+        - name: Install dependencies
+          run: pnpm install
+          shell: bash

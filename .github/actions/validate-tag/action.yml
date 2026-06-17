@@ -1,0 +1,20 @@
+name: Validate tag
+description: Validate the release tag format
+
+runs:
+    using: composite
+    steps:
+        - name: Validate tag
+          run: |
+              TAG="${{ github.event.release.tag_name }}"
+              echo "Validating tag: $TAG"
+
+              if ! echo "$TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-((docs|dry|canary|alpha|beta|rc)\.[0-9]+))?$'; then
+                  echo "❌ Invalid tag format: $TAG"
+                  echo "Tag must start with v[MAJOR].[MINOR].[PATCH]"
+                  echo "Optional suffix: -[docs|dry|canary|alpha|beta|rc].[NUMBER]"
+                  exit 1
+              fi
+
+              echo "✅ Tag is valid"
+          shell: bash

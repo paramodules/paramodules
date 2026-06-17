@@ -9,28 +9,89 @@ concurrency:
     cancel-in-progress: false
 
 jobs:
-    gate:
+    validate-tag:
         runs-on: ubuntu-latest
-        if: contains(github.event.release.tag_name, 'docs') == false
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/validate-tag
+
+    resolve-tag:
+        needs: validate-tag
+        runs-on: ubuntu-latest
+        outputs:
+            tag_name: ${{ steps.resolve.outputs.tag_name }}
+            channel: ${{ steps.resolve.outputs.channel }}
+        steps:
+            - name: Resolve tag and channel
+              id: resolve
+              run: |
+                  TAG="${{ github.event.release.tag_name }}"
+                  echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+
+                  if [[ "$TAG" == *"dry"* ]]; then       CHANNEL="dry"
+                  elif [[ "$TAG" == *"canary"* ]]; then  CHANNEL="canary"
+                  elif [[ "$TAG" == *"alpha"* ]]; then   CHANNEL="alpha"
+                  elif [[ "$TAG" == *"beta"* ]]; then    CHANNEL="beta"
+                  elif [[ "$TAG" == *"rc"* ]]; then      CHANNEL="rc"
+                  elif [[ "$TAG" != *"-"* ]]; then       CHANNEL="latest"
+                  else
+                    echo "::error::Unknown tag pattern: $TAG — no publish channel matched. Aborting."
+                    exit 1
+                  fi
+
+                  echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+                  echo "Resolved channel: $CHANNEL"
+
+    gate:
+        needs: resolve-tag
+        runs-on: ubuntu-latest
+        if: contains(needs.resolve-tag.outputs.tag_name, 'docs') == false
         steps:
             - name: Gate check
-              run: echo "Publish condition met"
+              run: echo "Publish condition met for tag ${{ needs.resolve-tag.outputs.tag_name }} on channel ${{ needs.resolve-tag.outputs.channel }}"
 
     test:
         needs: gate
-        uses: ./.github/workflows/test.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
 
     build-pkg:
         needs: gate
-        uses: ./.github/workflows/build-pkg.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        strategy:
+            matrix:
+                include:
+                    - filter: paramodules
+                      dist_path: packages/@paramodules/core/dist
+                      artifact_name: paramodules-build
 
-    validate-tag:
-        needs: gate
-        uses: ./.github/workflows/validate-tag.yml
+                    - filter: "@paramodules/react"
+                      dist_path: packages/@paramodules/react/main/dist
+                      artifact_name: "@paramodules-react-build"
+
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
+            - uses: ./.github/actions/build-pkg
+              with:
+                  filter: ${{ matrix.filter }}
+                  dist_path: ${{ matrix.dist_path }}
+                  artifact_name: ${{ matrix.artifact_name }}
+                  upload_artifact: "true"
 
     publish-pkg:
-        needs: [test, build-pkg, validate-tag]
-        if: contains(github.event.release.tag_name, 'docs') == false
+        needs: [resolve-tag, gate, test, build-pkg]
+        if: contains(needs.resolve-tag.outputs.tag_name, 'docs') == false
         environment:
             name: npm-publish
             url: https://www.npmjs.com/package/paramodules
@@ -38,123 +99,50 @@ jobs:
         permissions:
             contents: read # Required for checkout
             id-token: write # Required for OIDC with npm
+        strategy:
+            matrix:
+                include:
+                    - package: paramodules
+                      artifact_name: "paramodules-build"
+                      artifact_path: packages/@paramodules/core/dist
+                      working_directory: packages/@paramodules/core
+
+                    - package: "@paramodules/react"
+                      artifact_name: "@paramodules-react-build"
+                      artifact_path: packages/@paramodules/react/main/dist
+                      working_directory: packages/@paramodules/react/main
+
         steps:
-            - name: Checkout
-              uses: actions/checkout@v5
+            - uses: actions/checkout@v5
 
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
-
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
+            - uses: ./.github/actions/setup
               with:
-                  node-version: "lts/*"
                   registry-url: "https://registry.npmjs.org"
-                  package-manager-cache: false
+                  package-manager-cache: false # intentional: avoid stale cache on publish
 
-            - name: Download paramodules build artifacts
+            - name: Download ${{ matrix.package }} build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: "paramodules-build"
-                  path: ./packages/paramodules/dist
+                  name: ${{ matrix.artifact_name }}
+                  path: ${{ matrix.artifact_path }}
 
-            - name: Download @paramodules/react build artifacts
-              uses: actions/download-artifact@v5
-              with:
-                  name: "@paramodules-react-build"
-                  path: ./packages/@paramodules/react/main/dist
-
-            - name: Set version from release tag
+            - name: Set workspace package versions
               run: |
-                  VERSION=${GITHUB_REF#refs/tags/}
-                  VERSION=${VERSION#v}
+                  VERSION="${{ needs.resolve-tag.outputs.tag_name }}"
+                  VERSION="${VERSION#v}"
                   echo "Setting version to: $VERSION"
-                  echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-            - name: Set version for paramodules
-              working-directory: ./packages/paramodules
+                  pnpm \
+                      --filter paramodules \
+                      --filter "@paramodules/react" \
+                      exec npm version "$VERSION" --no-git-tag-version
+
+            - name: Publish ${{ matrix.package }}
+              working-directory: ${{ matrix.working_directory }}
+              env:
+                  CHANNEL: ${{ needs.resolve-tag.outputs.channel }}
               run: |
-                  npm version $VERSION --no-git-tag-version
-                  echo "paramodules package.json version is now: $(cat package.json | jq -r .version)"
-
-            - name: Set version for @paramodules/react
-              working-directory: ./packages/@marketjs/react/main
-              run: |
-                  npm version $VERSION --no-git-tag-version
-                  echo "@paramodules/react package.json version is now: $(cat package.json | jq -r .version)"
-
-            - name: Install dependencies to resolve workspace:^
-              working-directory: .
-              run: pnpm install
-
-            - name: Dry publish paramodules
-              if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/paramodules
-              run: |
-                  pnpm publish --tag dry --dry-run --no-git-checks
-
-            - name: Dry publish @paramodules/react
-              if: contains(github.event.release.tag_name, 'dry')
-              working-directory: ./packages/@paramodules/react/main
-              run: |
-                  pnpm publish --tag dry --dry-run --no-git-checks
-
-            - name: Publish paramodules to Canary
-              if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/paramodules
-              run: |
-                  pnpm publish --tag canary --no-git-checks
-
-            - name: Publish @paramodules/react to Canary
-              if: contains(github.event.release.tag_name, 'canary')
-              working-directory: ./packages/@paramodules/react/main
-              run: |
-                  pnpm publish --tag canary --no-git-checks
-
-            - name: Publish paramodules to Alpha
-              if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/paramodules
-              run: |
-                  pnpm publish --tag alpha --no-git-checks
-
-            - name: Publish @paramodules/react to Alpha
-              if: contains(github.event.release.tag_name, 'alpha')
-              working-directory: ./packages/@paramodules/react/main
-              run: |
-                  pnpm publish --tag alpha --no-git-checks
-
-            - name: Publish paramodules to Beta
-              if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/paramodules
-              run: |
-                  pnpm publish --tag beta --no-git-checks
-
-            - name: Publish @paramodules/react to Beta
-              if: contains(github.event.release.tag_name, 'beta')
-              working-directory: ./packages/@paramodules/react/main
-              run: |
-                  pnpm publish --tag beta --no-git-checks
-
-            - name: Publish paramodules to RC
-              if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/paramodules
-              run: |
-                  pnpm publish --tag rc --no-git-checks
-
-            - name: Publish @paramodules/react to RC
-              if: contains(github.event.release.tag_name, 'rc')
-              working-directory: ./packages/@paramodules/react/main
-              run: |
-                  pnpm publish --tag rc --no-git-checks
-
-            - name: Publish paramodules to Latest
-              if: contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/paramodules
-              run: |
-                  pnpm publish --tag latest --no-git-checks
-
-            - name: Publish @paramodules/react to Latest
-              if: contains(github.event.release.tag_name, '-') == false
-              working-directory: ./packages/@paramodules/react/main
-              run: |
-                  pnpm publish --tag latest --no-git-checks
+                  FLAGS="--tag $CHANNEL --no-git-checks --provenance"
+                  [[ "$CHANNEL" == "dry" ]] && FLAGS="$FLAGS --dry-run"
+                  echo "Publishing ${{ matrix.package }} with: pnpm publish $FLAGS"
+                  pnpm publish $FLAGS

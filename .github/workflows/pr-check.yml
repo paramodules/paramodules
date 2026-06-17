@@ -6,12 +6,39 @@ on:
 
 jobs:
     test:
-        uses: ./.github/workflows/test.yml
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/test
 
     build-pkg:
         needs: test
-        uses: ./.github/workflows/build-pkg.yml
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                include:
+                    - filter: paramodules
+                      dist_path: packages/@paramodules/core/dist
+                    - filter: "@paramodules/react"
+                      dist_path: packages/@paramodules/react/main/dist
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/build-pkg
+              with:
+                  filter: ${{ matrix.filter }}
+                  dist_path: ${{ matrix.dist_path }}
 
-    build-pages:
+    build-docs:
         needs: test
-        uses: ./.github/workflows/build-pages.yml
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/build-docs
+              with:
+                  upload_pages_artifact: "false"
