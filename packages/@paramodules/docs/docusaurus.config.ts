@@ -64,6 +64,11 @@ const config: Config = {
             },
             items: [
                 {
+                    to: "example",
+                    label: "Example",
+                    position: "right"
+                },
+                {
                     to: "blog",
                     label: "Blog",
                     position: "right"
