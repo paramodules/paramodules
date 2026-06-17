@@ -103,7 +103,7 @@ export type Request<
         }
 
 export type Market<MODULE extends UnknownModule> = {
-    [NAME in keyof MODULE["_reqType"]]-?: MODULE["_reqType"][NAME]
+    [NAME in keyof MODULE["_reqType"]]-?: NonNullable<MODULE["_reqType"][NAME]>
 }
 
 export type MarketPlan<

@@ -42,7 +42,7 @@ export function request<THIS extends UnknownModule>(
         preserved[name] = supplier
     }
 
-    const definedSpecified: MarketRecord<UnknownService> = Object.fromEntries(
+    const definedRequested: MarketRecord<UnknownService> = Object.fromEntries(
         Object.entries(req).filter(
             (entry): entry is [string, Supplier<UnknownService>] =>
                 entry[1] !== undefined
@@ -51,7 +51,7 @@ export function request<THIS extends UnknownModule>(
 
     const registry: RegistryRecord = {
         ...preserved,
-        ...definedSpecified
+        ...definedRequested
     }
 
     for (const service of this._team) {

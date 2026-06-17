@@ -1,5 +1,5 @@
 {
-    "extends": "@typectx/config.typescript",
+    "extends": "@paramodules/config.typescript",
     "compilerOptions": {
         "jsx": "react-jsx",
         "target": "ES2020",
