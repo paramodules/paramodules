@@ -8,6 +8,8 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
+        env:
+            build_path: packages/@paramodules/docs/build
         steps:
             - name: Checkout
               uses: actions/checkout@v5
@@ -26,6 +28,9 @@ jobs:
             - name: Build docs website
               run: pnpm run build --filter=@paramodules/docs
 
+            - name: Verify ${{ env.build_path }}/sitemap.xml exists
+              run: test -f "${{ env.build_path }}/sitemap.xml"
+
             - name: Setup Pages
               uses: actions/configure-pages@v5
 
@@ -33,4 +38,4 @@ jobs:
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-pages-artifact@v4
               with:
-                  path: ./packages/@paramodules/docs/build
+                  path: ${{ env.build_path }}

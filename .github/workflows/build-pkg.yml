@@ -8,6 +8,17 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
+        strategy:
+            matrix:
+                include:
+                    - filter: paramodules
+                      dist_path: packages/@paramodules/core/dist
+                      artifact_name: paramodules-build
+
+                    - filter: "@paramodules/react"
+                      dist_path: packages/@paramodules/react/main/dist
+                      artifact_name: "@paramodules-react-build"
+
         steps:
             - name: Checkout
               uses: actions/checkout@v5
@@ -23,23 +34,15 @@ jobs:
             - name: Install dependencies
               run: pnpm install
 
-            - name: Build packages
-              run: |
-                  pnpm run build --filter=paramodules
-                  pnpm run build --filter=@paramodules/react
+            - name: Build ${{ matrix.filter }}
+              run: pnpm run build --filter=${{ matrix.filter }}
 
-            - name: Upload paramodules build artifacts
+            - name: Verify ${{ matrix.dist_path }}/index.js exists
+              run: test -f "${{ matrix.dist_path }}/index.js"
+
+            - name: Upload ${{ matrix.filter }} build artifacts
               if: ${{ github.event_name == 'release' }}
               uses: actions/upload-artifact@v4
               with:
-                  name: "paramodules-build"
-                  path: |
-                      packages/@paramodules/core/dist
-
-            - name: Upload @paramodules/react build artifacts
-              if: ${{ github.event_name == 'release' }}
-              uses: actions/upload-artifact@v4
-              with:
-                  name: "@paramodules-react-build"
-                  path: |
-                      packages/@paramodules/react/main/dist
+                  name: ${{ matrix.artifact_name }}
+                  path: ${{ matrix.dist_path }}
