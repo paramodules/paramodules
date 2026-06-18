@@ -5,17 +5,9 @@ paramodules to React Context. Components are paramodules modules; params like
 `currentPost` and `userState` flow through the tree with `ParamsProvider` instead
 of prop drilling.
 
-Run it on port **3001**:
-
-```bash
-pnpm dev
-```
-
-From the monorepo root:
-
-```bash
-pnpm --filter @paramodules/react.example dev
-```
+This project is owned by the docs site and launched with the StackBlitz SDK.
+The files stay editable in the repository, and the docs page sends them to
+StackBlitz as a Vite project.
 
 ---
 
@@ -34,7 +26,7 @@ tree update without any props passed through `Comment`.
 
 ## Project layout
 
-```
+```text
 src/
 ├── context.ts          # Context params ($currentPost, $userState)
 ├── api.ts              # Mock data and async loader modules
@@ -100,13 +92,6 @@ resolve from `initSupplies` (the graph paramodules built at request time).
 ```
 
 The `for` prop types which params you may supply.
-
----
-
-## Related docs
-
-- [@paramodules/react README](../../main/README.md)
-- [paramodules core](https://github.com/paramodules/core)
 
 ---
 

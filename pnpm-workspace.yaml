@@ -8,4 +8,3 @@ packages:
     - "packages/@paramodules/*"
     - "packages/@paramodules/config/*"
     - "packages/@paramodules/react/*"
-    - "packages/@paramodules/react/examples/*"
