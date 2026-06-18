@@ -1,4 +1,5 @@
 import { Suspense, useState } from "react"
+import { $CacheStatus } from "@/components/cache-status"
 import { $Feed } from "@/components/feed"
 import { $SelectSession } from "@/components/session"
 import { type User } from "@/api"
@@ -7,10 +8,13 @@ import { $userStateContext } from "@/context"
 import { index } from "paramodules"
 
 export const $App = service("App").module({
-    required: [$Feed, $SelectSession],
+    required: [$CacheStatus, $Feed, $SelectSession],
     factory: (initSupplies) =>
         function App() {
-            const { Feed, SelectSession } = useSupplies($App, initSupplies)
+            const { CacheStatus, Feed, SelectSession } = useSupplies(
+                $App,
+                initSupplies
+            )
             const userState = useState<User | undefined>(undefined)
 
             return (
@@ -24,6 +28,7 @@ export const $App = service("App").module({
                                 <h1 className="text-3xl font-bold text-center mb-4">
                                     Social Feed Wireframe
                                 </h1>
+                                <CacheStatus />
                                 <Suspense
                                     fallback={<div>Loading users...</div>}
                                 >

@@ -18,6 +18,7 @@ StackBlitz as a Vite project.
 - **`useSupplies`** — each component reads its dependency graph in one call, like typed `useContext` for the whole module.
 - **Subtree scopes** — `Feed` wraps each post in a `ParamsProvider`; `Post` can override `userState` for its own branch.
 - **Async loading** — `$usersPromise` and `$postsPromise` are async modules consumed with React `Suspense` and `use()`.
+- **Memoized async data** — the mock API modules use `memo:` with a localStorage-backed wrapper, so repeat page loads can reuse the paramodules cache key and skip the artificial network delay.
 
 Open the app and try switching the session user on a post. Replies deep in the
 tree update without any props passed through `Comment`.
@@ -30,8 +31,10 @@ tree update without any props passed through `Comment`.
 src/
 ├── context.ts          # Context params ($currentPost, $userState)
 ├── api.ts              # Mock data and async loader modules
+├── cache.ts            # localStorage-backed memo wrapper
 ├── components/
 │   ├── app.tsx         # Root layout, app-level ParamsProvider
+│   ├── cache-status.tsx # Shows and clears persistent memo entries
 │   ├── feed.tsx        # Lists posts, scopes currentPost per item
 │   ├── post.tsx        # Post card, optional per-post userState override
 │   ├── comment.tsx     # Comment list
@@ -46,12 +49,13 @@ src/
 ## Suggested reading order
 
 1. **`src/context.ts`** — params that should propagate through React.
-2. **`src/api.ts`** — plain paramodules modules (async data, no Context).
-3. **`src/components/reply.tsx`** — a leaf component that reads context params via `useSupplies`.
-4. **`src/components/feed.tsx`** — `ParamsProvider` scopes `currentPost` per post.
-5. **`src/components/post.tsx`** — nested provider overrides `userState` for one post subtree.
-6. **`src/components/app.tsx`** — root provider and composition of `Feed` + `SelectSession`.
-7. **`src/main.tsx`** — entry point: `$App.request({}).get()`.
+2. **`src/cache.ts`** — a `memo(fn, cacheKey)` wrapper that stores resolved async values in localStorage.
+3. **`src/api.ts`** — async data modules that opt into persistent memoization.
+4. **`src/components/reply.tsx`** — a leaf component that reads context params via `useSupplies`.
+5. **`src/components/feed.tsx`** — `ParamsProvider` scopes `currentPost` per post.
+6. **`src/components/post.tsx`** — nested provider overrides `userState` for one post subtree.
+7. **`src/components/app.tsx`** — root provider and composition of `Feed` + `SelectSession`.
+8. **`src/main.tsx`** — entry point: `$App.request({}).get()`.
 
 ---
 
@@ -92,6 +96,34 @@ resolve from `initSupplies` (the graph paramodules built at request time).
 ```
 
 The `for` prop types which params you may supply.
+
+### Persist async module results
+
+```ts
+const apiMemo = localStorageMemo("react-social-feed-v0.14")
+
+export const $postsPromise = service("postsPromise").module({
+    memo: apiMemo,
+    factory: async () => {
+        await sleep(1000)
+        return populatedPosts
+    }
+})
+```
+
+Paramodules builds a cache key from the memo-enabled module versions and request
+params, then passes it to `memo(fn, cacheKey)`. The example wrapper keeps the
+supplier shape intact and only persists the resolved async value. The "Invalidate
+cache and reload" button clears localStorage, calls `invalidate()` on the
+memo-enabled API modules, and reloads so the root module request is rebuilt with
+fresh keys.
+
+`localStorageMemo` is built with `createSerializableValueMemo`, which can adapt
+any external cache with a `readStorage(cacheKey)` and
+`writeStorage(cacheKey, value)` pair. The serializable-value builder is
+intentionally strict: it throws if a resolved module value is not
+JSON-serializable. That is a storage-adapter rule, not a core paramodules rule.
+In-memory memo wrappers can cache suppliers or opaque values directly.
 
 ---
 

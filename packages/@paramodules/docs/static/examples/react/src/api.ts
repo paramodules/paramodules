@@ -1,5 +1,9 @@
 import { service } from "@paramodules/react"
 import { sleep } from "paramodules"
+import { localStorageMemo } from "@/cache"
+
+export const apiCacheNamespace = "react-social-feed-v0.14"
+const apiMemo = localStorageMemo(apiCacheNamespace)
 
 export const mockUsers = [
     { id: "userA" },
@@ -55,6 +59,7 @@ export type Post = (typeof populatedPosts)[number]
 export type Comment = Post["comments"][number]
 
 export const $usersPromise = service("usersPromise").module({
+    memo: apiMemo,
     factory: async () => {
         await sleep(1000)
         return mockUsers
@@ -62,6 +67,7 @@ export const $usersPromise = service("usersPromise").module({
 })
 
 export const $postsPromise = service("postsPromise").module({
+    memo: apiMemo,
     factory: async () => {
         await sleep(1000)
         return populatedPosts

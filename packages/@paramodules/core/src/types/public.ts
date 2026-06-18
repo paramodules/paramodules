@@ -1,5 +1,5 @@
 import type { HiredGuard, ModulePlanGuard } from "#types/guards"
-import type { Factory, Service, Warmup } from "#types/internal"
+import type { Factory, Memo, Service, Warmup } from "#types/internal"
 import type {
     Market,
     Supplies,
@@ -45,6 +45,7 @@ export type PartialModulePlan<
     optionals?: [...OPTIONALS]
     factory: Factory<TYPE, REQUIRED, OPTIONALS>
     warmup?: Warmup<TYPE, REQUIRED, OPTIONALS>
+    memo?: Memo
 }
 
 export interface Module<
@@ -62,6 +63,7 @@ export interface Module<
         req: THIS["_reqType"]
     ) => Supplier<THIS>
     provision: <THIS extends UnknownModule>(this: THIS) => THIS
+    invalidate: <THIS extends UnknownModule>(this: THIS) => void
     mock: <
         THIS extends UnknownModule & {
             tm: NAME
@@ -119,6 +121,8 @@ export interface Module<
     _factory: (deps: any, ctx: any) => any
     /** Optional initialization function called after factory */
     _warmup?: (value: any, deps: any) => void
+    _memo?: Memo
+    _version: number
     _resolve: <THIS extends UnknownModule>(
         this: THIS,
         lazyMarket: RegistryRecord
@@ -235,6 +239,7 @@ export type Ctx<
 :   SERVICE & Param // simply returns the service itself if it's a request service (noop)
 
 export type { MarketRecord, RegistryRecord, Request }
+export type { Memo }
 export type {
     CircularModuleError,
     DuplicateServiceError,

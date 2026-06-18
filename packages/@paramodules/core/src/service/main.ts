@@ -77,6 +77,7 @@ export function main<
         ...param<TM, TYPE>(tm),
         request: request,
         provision,
+        invalidate,
         _factory: plan.factory,
         _resolve,
         _required: plan.required ?? [],
@@ -84,6 +85,8 @@ export function main<
         _team,
         _hired: [] as [],
         _warmup: plan.warmup,
+        _memo: plan.memo,
+        _version: 0,
         _param: false as const,
         _module: true as const,
         _type: null as unknown as TYPE,
@@ -94,6 +97,17 @@ export function main<
         _oldReqType: _reqType,
         _oldSuppliesType: _suppliesType
     }
+}
+
+function invalidate<THIS extends { _memo?: unknown; _version: number; tm: string }>(
+    this: THIS
+) {
+    if (!this._memo) {
+        throw new Error(
+            `Cannot invalidate "${this.tm}" because invalidate() only applies to memo-enabled modules.`
+        )
+    }
+    this._version += 1
 }
 
 export function team(

@@ -66,4 +66,15 @@ export function service<TM extends string>(tm: TM) {
 }
 
 export { index, sleep, once } from "#utils"
+export {
+    memoize,
+    cacheable,
+    createValueMemo,
+    createSerializableValueMemo
+} from "#cache"
+export type {
+    JsonValue,
+    ValueMemoStorage,
+    SerializableValueMemoStorage
+} from "#cache"
 export * from "#types/public"
