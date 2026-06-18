@@ -64,10 +64,8 @@ const config: Config = {
             },
             items: [
                 {
-                    href: "/paramodules/#see-example",
-                    label: "See example",
-                    position: "right",
-                    className: "button button--primary button--sm"
+                    type: "custom-openExample",
+                    position: "right"
                 },
                 {
                     to: "blog",
