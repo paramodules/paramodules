@@ -1,16 +1,12 @@
-import { type ReactNode, useState } from "react"
+import { type ReactNode } from "react"
 import clsx from "clsx"
 import Link from "@docusaurus/Link"
 import Head from "@docusaurus/Head"
-import useBaseUrl from "@docusaurus/useBaseUrl"
 import Layout from "@theme/Layout"
 import Heading from "@theme/Heading"
 import CodeBlock from "@theme/CodeBlock"
 import { GitHubIcon, NpmIcon } from "@site/src/components/BrandIcons"
-import {
-    loadReactExampleProject,
-    reactExampleOpenFile
-} from "../examples/react/project"
+import { OpenExampleButton } from "@site/src/components/OpenExampleButton"
 
 import styles from "./index.module.css"
 
@@ -232,49 +228,6 @@ const cascadeExamples = [
     }
 ] as const
 
-function OpenExampleButton({ className }: { className?: string }): ReactNode {
-    const [status, setStatus] = useState<"idle" | "opening" | "error">("idle")
-    const reactExampleBaseUrl = useBaseUrl("/examples/react/")
-
-    async function openExample() {
-        setStatus("opening")
-
-        try {
-            const project = await loadReactExampleProject(reactExampleBaseUrl)
-            const { default: sdk } = await import("@stackblitz/sdk")
-            await sdk.openProject(project, {
-                newWindow: true,
-                openFile: reactExampleOpenFile,
-                startScript: "dev",
-                theme: "dark"
-            })
-            setStatus("idle")
-        } catch {
-            setStatus("error")
-        }
-    }
-
-    return (
-        <>
-            <button
-                className={className}
-                type="button"
-                onClick={() => {
-                    void openExample()
-                }}
-                disabled={status === "opening"}
-            >
-                {status === "opening" ? "Opening..." : "See example"}
-            </button>
-            {status === "error" && (
-                <span className={styles.exampleError} role="status">
-                    Could not open StackBlitz.
-                </span>
-            )}
-        </>
-    )
-}
-
 function Hero(): ReactNode {
     return (
         <section className={styles.hero}>
@@ -301,16 +254,10 @@ function Hero(): ReactNode {
                             params at the entry point, request a module, and let
                             TypeScript infer the graph end to end.
                         </p>
-                        <Heading
-                            as="h2"
-                            id="see-example"
-                            className={styles.visuallyHidden}
-                        >
-                            See example
-                        </Heading>
                         <div className={styles.heroButtons}>
                             <OpenExampleButton
                                 className={clsx("button", styles.primaryButton)}
+                                errorClassName={styles.exampleError}
                             />
                             <Link
                                 className={clsx(
@@ -626,6 +573,7 @@ function Install(): ReactNode {
                     <div className={styles.ctaButtons}>
                         <OpenExampleButton
                             className={clsx("button", styles.primaryButton)}
+                            errorClassName={styles.exampleError}
                         />
                         <Link
                             className={clsx("button", styles.secondaryButton)}
