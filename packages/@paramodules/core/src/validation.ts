@@ -107,6 +107,7 @@ export function assertModulePlan(
         optionals?: unknown
         factory?: unknown
         warmup?: unknown
+        memo?: unknown
         context?: unknown
     }
 ) {
@@ -124,6 +125,9 @@ export function assertModulePlan(
 
     if (plan.warmup !== undefined) {
         assertFunction(name, plan.warmup)
+    }
+    if (plan.memo !== undefined) {
+        assertFunction(name, plan.memo)
     }
 }
 

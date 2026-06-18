@@ -43,6 +43,11 @@ export type Warmup<
     }>
 ) => void
 
+export type Memo<F extends (...args: any[]) => any = (...args: any[]) => any> = (
+    fn: F,
+    cacheKey: string
+) => F
+
 export type ModulePlan<
     TYPE,
     REQUIRED extends OriginalService[],
@@ -52,6 +57,7 @@ export type ModulePlan<
     optionals: [...OPTIONALS]
     factory: Factory<TYPE, REQUIRED, OPTIONALS>
     warmup: Warmup<TYPE, REQUIRED, OPTIONALS>
+    memo: Memo
 }
 
 export type UnknownModulePlan = ModulePlan<unknown, OriginalService[], Param[]>
