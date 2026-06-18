@@ -1,4 +1,4 @@
-import { type Comment as CommentType, type Reply as ReplyType } from "@/api"
+import { type Comment as CommentType } from "@/api"
 import { $Reply } from "@/components/reply"
 import { useSupplies, service } from "@paramodules/react"
 

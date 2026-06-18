@@ -60,24 +60,3 @@ jobs:
             - name: Deploy to GitHub Pages
               id: deploy-docs
               uses: actions/deploy-pages@v4
-
-    push-docs-branch:
-        environment:
-            name: docs-branch
-        needs: [test, build-docs, validate-tag]
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  token: ${{ secrets.PARAMODULES_ADMIN }}
-
-            - name: Configure Git
-              run: |
-                  git config --local user.email "action@github.com"
-                  git config --local user.name "paramodules-bot"
-
-            - name: Set docs branch
-              run: |
-                  git fetch origin --tags
-                  git branch -f docs ${{ github.event.release.tag_name }}
-                  git push origin docs --force

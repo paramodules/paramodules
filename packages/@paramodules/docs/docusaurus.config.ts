@@ -64,9 +64,10 @@ const config: Config = {
             },
             items: [
                 {
-                    to: "example",
-                    label: "Example",
-                    position: "right"
+                    href: "/paramodules/#see-example",
+                    label: "See example",
+                    position: "right",
+                    className: "button button--primary button--sm"
                 },
                 {
                     to: "blog",

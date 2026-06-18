@@ -90,6 +90,15 @@
     line-height: 1.7;
 }
 
+.visuallyHidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
 .heroButtons,
 .ctaButtons {
     display: flex;
@@ -157,6 +166,19 @@
     background: rgba(20, 56, 88, 0.55);
     color: #ffffff;
     transform: translateY(-2px);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+    cursor: progress;
+    opacity: 0.72;
+    transform: none;
+}
+
+.exampleError {
+    color: #ffb4b4;
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 .codeWindow {

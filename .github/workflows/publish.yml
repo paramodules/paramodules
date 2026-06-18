@@ -34,6 +34,7 @@ jobs:
                   elif [[ "$TAG" == *"alpha"* ]]; then   CHANNEL="alpha"
                   elif [[ "$TAG" == *"beta"* ]]; then    CHANNEL="beta"
                   elif [[ "$TAG" == *"rc"* ]]; then      CHANNEL="rc"
+                  elif [[ "$TAG" == *"docs"* ]]; then     CHANNEL="docs"
                   elif [[ "$TAG" != *"-"* ]]; then       CHANNEL="latest"
                   else
                     echo "::error::Unknown tag pattern: $TAG — no publish channel matched. Aborting."
