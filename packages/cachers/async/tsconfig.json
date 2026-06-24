@@ -1,0 +1,13 @@
+{
+    "extends": "@paramodules/config.typescript",
+    "compilerOptions": {
+        "target": "ES2020",
+        "lib": ["ES2023", "DOM"],
+        "declaration": true,
+        "declarationMap": true,
+        "outDir": "./dist",
+        "rootDir": "."
+    },
+    "include": ["index.ts", "tests/**/*", "vitest.config.ts"],
+    "exclude": ["node_modules", "dist"]
+}

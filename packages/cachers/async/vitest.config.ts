@@ -1,0 +1,14 @@
+import { defineProject } from "vitest/config"
+
+export default defineProject({
+    test: {
+        globals: true,
+        environment: "node",
+        include: ["**/*.test.ts", "**/*.spec.ts"],
+        typecheck: {
+            include: ["**/*.test.ts", "**/*.spec.ts"],
+            tsconfig: "./tsconfig.json"
+        },
+        exclude: ["**/node_modules/**", "**/dist/**"]
+    }
+})

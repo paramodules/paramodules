@@ -1,10 +1,10 @@
 publicHoistPattern:
     - "*eslint*"
-    - "!@paramodules/config.eslint"
+    - "!config.eslint"
 linkWorkspacePackages: deep
 preferWorkspacePackages: true
 packages:
     - "packages/*"
-    - "packages/@paramodules/*"
-    - "packages/@paramodules/config/*"
-    - "packages/@paramodules/react/*"
+    - "packages/config/*"
+    - "packages/react/*"
+    - "packages/cachers/*"

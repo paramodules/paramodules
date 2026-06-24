@@ -1,0 +1,14 @@
+{
+    "extends": "@docusaurus/tsconfig",
+    "compilerOptions": {
+        "ignoreDeprecations": "6.0",
+        "baseUrl": "."
+    },
+    "include": [
+        "src/**/*",
+        "docusaurus.config.ts",
+        "vite-env.d.ts",
+        "navbarIcons.ts"
+    ],
+    "exclude": [".docusaurus", "build", "node_modules"]
+}

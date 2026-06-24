@@ -71,11 +71,11 @@ jobs:
             matrix:
                 include:
                     - filter: paramodules
-                      dist_path: packages/@paramodules/core/dist
+                      dist_path: packages/core/dist
                       artifact_name: paramodules-build
 
                     - filter: "@paramodules/react"
-                      dist_path: packages/@paramodules/react/main/dist
+                      dist_path: packages/react/dist
                       artifact_name: "@paramodules-react-build"
 
         steps:
@@ -103,13 +103,13 @@ jobs:
                 include:
                     - package: paramodules
                       artifact_name: "paramodules-build"
-                      artifact_path: packages/@paramodules/core/dist
-                      working_directory: packages/@paramodules/core
+                      artifact_path: packages/core/dist
+                      working_directory: packages/core
 
                     - package: "@paramodules/react"
                       artifact_name: "@paramodules-react-build"
-                      artifact_path: packages/@paramodules/react/main/dist
-                      working_directory: packages/@paramodules/react/main
+                      artifact_path: packages/react/dist
+                      working_directory: packages/react
 
         steps:
             - uses: actions/checkout@v5

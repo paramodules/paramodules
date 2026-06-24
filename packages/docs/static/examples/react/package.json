@@ -1,0 +1,36 @@
+{
+    "name": "paramodules-react-example",
+    "version": "0.0.0",
+    "type": "module",
+    "private": true,
+    "description": "A React example showcasing paramodules with a social media wireframe",
+    "scripts": {
+        "dev": "vite --host 0.0.0.0",
+        "start": "vite --host 0.0.0.0",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "paramodules": "latest",
+        "@paramodules/react": "latest",
+        "@paramodules/sync-cacher": "latest",
+        "@paramodules/async-cacher": "latest",
+        "clsx": "^2.1.1",
+        "date-fns": "^2.30.0",
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3"
+    },
+    "devDependencies": {
+        "@types/react": "^19.2.7",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^4.7.0",
+        "@tailwindcss/vite": "^4.1.18",
+        "tailwindcss": "^4.1.18",
+        "typescript": "^6.0.2",
+        "vite": "^5.4.21"
+    },
+    "stackblitz": {
+        "installDependencies": true,
+        "startCommand": "pnpm dev"
+    }
+}

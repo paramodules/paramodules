@@ -5,7 +5,7 @@ inputs:
     build_path:
         description: Path to the docs build output
         required: false
-        default: packages/@paramodules/docs/build
+        default: packages/docs/build
     upload_pages_artifact:
         description: Upload the build for GitHub Pages deployment
         required: false
