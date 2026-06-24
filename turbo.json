@@ -15,7 +15,7 @@
             "persistent": true
         },
         "test:run": {
-            "dependsOn": ["^build"]
+            "dependsOn": ["build"]
         },
         "lint": {}
     }
