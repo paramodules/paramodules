@@ -22,9 +22,9 @@ jobs:
             matrix:
                 include:
                     - filter: paramodules
-                      dist_path: packages/@paramodules/core/dist
+                      dist_path: packages/core/dist
                     - filter: "@paramodules/react"
-                      dist_path: packages/@paramodules/react/main/dist
+                      dist_path: packages/react/dist
         steps:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/setup
