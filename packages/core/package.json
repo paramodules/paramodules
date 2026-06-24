@@ -1,0 +1,43 @@
+{
+    "name": "paramodules",
+    "type": "module",
+    "version": "0.0.0",
+    "description": "Stateless, parametrizable runtime modules — type-inferred primitives for cascading full-stack application architecture.",
+    "sideEffects": false,
+    "author": "@paramodules",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/paramodules/paramodules.git"
+    },
+    "imports": {
+        "#*": "./src/*.ts"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "watch": "tsup --watch",
+        "test": "vitest",
+        "test:run": "vitest run --typecheck",
+        "typecheck": "vitest run --typecheck.only"
+    },
+    "devDependencies": {
+        "@paramodules/config.eslint": "workspace:*",
+        "@paramodules/config.typescript": "workspace:*",
+        "vitest": "^4.0.10",
+        "@vitest/coverage-v8": "^4.0.10",
+        "vite": "^8.0.0",
+        "typescript": "^6.0.2",
+        "tsup": "^8.5.1",
+        "turbo": "^2.5.5"
+    }
+}

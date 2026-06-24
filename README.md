@@ -1,1 +1,1 @@
-packages/@paramodules/core/README.md
+./packages/core/README.md
