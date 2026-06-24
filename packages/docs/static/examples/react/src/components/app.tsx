@@ -25,12 +25,31 @@ export const $App = service("App").module({
                                     Social Feed Wireframe
                                 </h1>
                                 <Suspense
-                                    fallback={<div>Loading users...</div>}
+                                    fallback={
+                                        <div>
+                                            <p>Fake loading users... (3s)</p>
+                                            <p className="text-xs text-gray-500">
+                                                Refresh the page when done, then
+                                                it'll be instant thanks to
+                                                caching
+                                            </p>
+                                        </div>
+                                    }
                                 >
                                     <SelectSession />
                                 </Suspense>
                             </header>
-                            <Suspense fallback={<div>Loading feed...</div>}>
+                            <Suspense
+                                fallback={
+                                    <div>
+                                        <p>Fake loading feed... (3s)</p>
+                                        <p className="text-xs text-gray-500">
+                                            Refresh the page when done, then
+                                            it'll be instant thanks to caching
+                                        </p>
+                                    </div>
+                                }
+                            >
                                 <Feed />
                             </Suspense>
                         </div>
