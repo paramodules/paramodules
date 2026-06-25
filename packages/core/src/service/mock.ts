@@ -1,5 +1,4 @@
 import { main } from "#service/main"
-import { randomUUID } from "node:crypto"
 import type { ModulePlanGuard } from "#types/guards"
 import { assertModulePlan } from "#validation"
 import type {
@@ -9,6 +8,7 @@ import type {
     UnknownModule,
     Mock as MockType
 } from "#types/public"
+import { simpleId } from "#utils"
 
 /**
  * Creates a mock version of this module with difsferent dependencies.
@@ -50,7 +50,7 @@ export function Mock() {
             ...mock,
             hired: [] as [],
             _mock: true as const,
-            _mockId: randomUUID(),
+            _mockId: simpleId(),
             _oldReqType: this._reqType,
             _oldSuppliesType: this._suppliesType
         } satisfies MockType<THIS, TYPE2, REQUIRED2, OPTIONALS2> as any

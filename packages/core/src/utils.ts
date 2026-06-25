@@ -36,6 +36,10 @@ export function dedupe(services: UnknownService[]) {
     return Object.values(deduped)
 }
 
+export function simpleId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2)
+}
+
 /**
  * Transforms an array of suppliers into a map keyed by service trademarks.
  * This provides type-safe access to suppliers by their service trademarks.
