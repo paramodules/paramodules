@@ -10,7 +10,7 @@ hide_table_of_contents: false
 
 v0.15 is a small release. It fixes how cross-request caching plugs into modules, and that fix comes with a breaking API change if you were using the v0.14 caching preview.
 
-{/_ truncate _/}
+{/* truncate */}
 
 In v0.14, caching lived inside `.module({ ..., memo })`
 
@@ -37,4 +37,4 @@ const $profile = service("profile")
 
 `.invalidate()` still works the same way on cached modules. The cache key still follows the dependency cascade; only the wiring changed.
 
-See the [caching section in the README](https://paramodules.github.io/core/) for sync, async, and custom cacher examples.
+See the [caching section in the README](https://www.npmjs.com/package/paramodules) for sync, async, and custom cacher examples.
