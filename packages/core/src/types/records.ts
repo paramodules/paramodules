@@ -25,14 +25,14 @@ export type MarketRecord<SERVICE extends UnknownService = UnknownService> =
     Record<string, Supplier<SERVICE>>
 
 /**
- * A generic map of supplies or undefined. Undefined used to force a supply not to be preserved across reassembly.
+ * A generic map of suppliers or undefined. Undefined used to force a supplier not to be preserved across request scopes.
  * @public
  */
 export type RegistryOrUndefinedRecord<
     SERVICE extends UnknownService = UnknownService
 > = Record<string, MaybeFn<[], Supplier<SERVICE>> | undefined>
 
-type FindSupplyFirstAppearanceInServiceTuple<
+type FindSupplierFirstAppearanceInServiceTuple<
     SERVICES extends UnknownService[],
     KEY extends "_reqType" | "_suppliesType",
     NAME extends PropertyKey
@@ -42,8 +42,8 @@ type FindSupplyFirstAppearanceInServiceTuple<
             Head extends UnknownModule ?
                 NAME extends keyof Head[KEY] ?
                     Head[KEY][NAME]
-                :   FindSupplyFirstAppearanceInServiceTuple<Tail, KEY, NAME>
-            :   FindSupplyFirstAppearanceInServiceTuple<Tail, KEY, NAME>
+                :   FindSupplierFirstAppearanceInServiceTuple<Tail, KEY, NAME>
+            :   FindSupplierFirstAppearanceInServiceTuple<Tail, KEY, NAME>
         :   never
     :   never
 
@@ -95,7 +95,7 @@ export type Request<
             [NAME in keyof UnionToIntersection<
                 Extract<PLAN["required"][number], UnknownModule>["_reqType"]
             > as NAME extends keyof RequestBase<PLAN> ? never
-            :   NAME]: FindSupplyFirstAppearanceInServiceTuple<
+            :   NAME]: FindSupplierFirstAppearanceInServiceTuple<
                 PLAN["required"],
                 "_reqType",
                 NAME
@@ -141,7 +141,7 @@ export type SuppliesPlan<
                     UnknownModule
                 >["_suppliesType"]
             > as NAME extends keyof SuppliesPlanBase<PLAN> ? never
-            :   NAME]: FindSupplyFirstAppearanceInServiceTuple<
+            :   NAME]: FindSupplierFirstAppearanceInServiceTuple<
                 PLAN["required"],
                 "_suppliesType",
                 NAME

@@ -93,32 +93,34 @@ const $cart = service("cart").param<{
     items: Array<{ productId: string; quantity: number }>
 }>()
 
-const $cartProducts = service("cartProducts").module({
-    required: [$cart],
-    factory: ({ cart }) =>
-        db.products.findManyById(cart.items.map((item) => item.productId)),
-    caching: syncCaching
-})
+const $cartProducts = service("cartProducts")
+    .module({
+        required: [$cart],
+        factory: ({ cart }) =>
+            db.products.findManyById(cart.items.map((item) => item.productId))
+    })
+    .caching(syncCaching)
 
-const $checkoutQuote = service("checkoutQuote").module({
-    required: [$cart, $cartProducts],
-    factory: ({ cart, cartProducts }) => {
-        const lines = cart.items.map((item) => {
-            const product = cartProducts.find((p) => p.id === item.productId)
+const $checkoutQuote = service("checkoutQuote")
+    .module({
+        required: [$cart, $cartProducts],
+        factory: ({ cart, cartProducts }) => {
+            const lines = cart.items.map((item) => {
+                const product = cartProducts.find((p) => p.id === item.productId)
+                return {
+                    name: product.name,
+                    quantity: item.quantity,
+                    lineTotal: product.price * item.quantity
+                }
+            })
+
             return {
-                name: product.name,
-                quantity: item.quantity,
-                lineTotal: product.price * item.quantity
+                lines,
+                subtotal: lines.reduce((sum, line) => sum + line.lineTotal, 0)
             }
-        })
-
-        return {
-            lines,
-            subtotal: lines.reduce((sum, line) => sum + line.lineTotal, 0)
         }
-    },
-    caching: syncCaching
-})
+    })
+    .caching(syncCaching)
 
 const cart = { items: [{ productId: "coffee-mug", quantity: 2 }] }
 

@@ -287,15 +287,15 @@ describe("Mocks Feature", () => {
             const cache = $cache.of("redis://localhost:6379")
 
             // @ts-expect-error - cache is missing
-            const errorSupply = $combined.request(index(db))
+            const errorSupplier = $combined.request(index(db))
 
-            const combinedSupply = $combined.request(index(db, cache))
+            const combinedSupplier = $combined.request(index(db, cache))
 
-            expect(combinedSupply.get()).toEqual(
+            expect(combinedSupplier.get()).toEqual(
                 "user-postgresql://localhost:5432/db"
             )
 
-            const sessionResult = combinedSupply.supplies[$session.tm]
+            const sessionResult = combinedSupplier.supplies[$session.tm]
             expect(sessionResult).toEqual("session-redis://localhost:6379")
         })
 
@@ -335,10 +335,10 @@ describe("Mocks Feature", () => {
                 factory: (deps, ctx) => {
                     const supplier = ctx($service).hire($contextual).request({})
 
-                    const contextualSupply = supplier.market[$contextual.tm]
-                    expectTypeOf(contextualSupply).not.toEqualTypeOf<any>()
-                    expectTypeOf(contextualSupply).toExtend<Supplier<any>>()
-                    expect(contextualSupply.get()).toBe("contextual-value")
+                    const contextualSupplier = supplier.market[$contextual.tm]
+                    expectTypeOf(contextualSupplier).not.toEqualTypeOf<any>()
+                    expectTypeOf(contextualSupplier).toExtend<Supplier<any>>()
+                    expect(contextualSupplier.get()).toBe("contextual-value")
                 }
             })
 

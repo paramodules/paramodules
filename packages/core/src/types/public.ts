@@ -45,7 +45,6 @@ export type PartialModulePlan<
     optionals?: [...OPTIONALS]
     factory: Factory<TYPE, REQUIRED, OPTIONALS>
     warmup?: Warmup<TYPE, REQUIRED, OPTIONALS>
-    caching?: CachingConfig<TYPE>
 }
 
 export interface Module<
@@ -64,6 +63,10 @@ export interface Module<
     ) => Supplier<THIS>
     provision: <THIS extends UnknownModule>(this: THIS) => THIS
     invalidate: <THIS extends UnknownModule>(this: THIS) => void
+    caching: <THIS extends UnknownModule>(
+        this: THIS,
+        config: CachingConfig<THIS["_type"]>
+    ) => THIS
     mock: <
         THIS extends UnknownModule & {
             tm: NAME
@@ -173,12 +176,12 @@ export type Mock<
 }
 
 /**
- * Represents a supply - The result of assembling a service
- * with all its app and request dependencies, which can easily be passed
- * to other services.
+ * Represents a supplier - The result of resolving a module
+ * with all its dependencies, which can easily be passed
+ * to other modules.
  *
- * @typeParam NAME - The unique identifier name for this supply
- * @typeParam VALUE - The type of value this supply holds
+ * @typeParam NAME - The unique identifier name for this supplier
+ * @typeParam VALUE - The type of value this supplier holds
  * @public
  */
 export type ModuleSupplier<MODULE extends UnknownModule> = {
@@ -252,7 +255,7 @@ export type AsyncCacher = <TYPE extends Promise<unknown>>(
 
 export type Serializer = (value: unknown) => string
 
-export type CachingConfig<TYPE = unknown> = {
+export type CachingConfig<TYPE> = {
     cacher: [TYPE] extends [Promise<unknown>] ? AsyncCacher : Cacher
     serializer: Serializer
 }

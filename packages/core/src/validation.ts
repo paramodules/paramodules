@@ -107,8 +107,6 @@ export function assertModulePlan(
         optionals?: unknown
         factory?: unknown
         warmup?: unknown
-        caching?: unknown
-        context?: unknown
     }
 ) {
     assertPlainObject(name, plan)
@@ -126,13 +124,14 @@ export function assertModulePlan(
     if (plan.warmup !== undefined) {
         assertFunction(name, plan.warmup)
     }
-    if (plan.caching !== undefined) {
-        assertPlainObject(`${name}.caching`, plan.caching)
-        assertHasProperty(`${name}.caching`, plan.caching, "cacher")
-        assertHasProperty(`${name}.caching`, plan.caching, "serializer")
-        assertFunction(`${name}.caching`, plan.caching.cacher)
-        assertFunction(`${name}.caching`, plan.caching.serializer)
-    }
+}
+
+export function assertCachingConfig(name: string, config: unknown) {
+    assertPlainObject(`${name}.caching`, config)
+    assertHasProperty(`${name}.caching`, config, "cacher")
+    assertHasProperty(`${name}.caching`, config, "serializer")
+    assertFunction(`${name}.caching`, config.cacher)
+    assertFunction(`${name}.caching`, config.serializer)
 }
 
 export function assertParam(service: unknown): asserts service is Param {

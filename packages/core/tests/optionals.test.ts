@@ -509,12 +509,12 @@ describe("Optionals Feature", () => {
                 }
             })
 
-            const batchSupply = $module1
+            const batchSupplier = $module1
                 .hire($module2)
                 .request(index($optional1.of("test")))
 
-            expect(batchSupply.get()).toBe("S1: test")
-            expect(batchSupply.supplies[$module2.tm]).toBe("S2: none")
+            expect(batchSupplier.get()).toBe("S1: test")
+            expect(batchSupplier.supplies[$module2.tm]).toBe("S2: none")
         })
     })
 

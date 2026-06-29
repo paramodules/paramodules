@@ -1,0 +1,40 @@
+---
+title: "paramodules v0.15: caching API cleanup"
+slug: paramodules-v0.15-caching-api-change
+authors:
+    - name: Félix Dubé
+      title: "@someone635"
+      url: https://github.com/someone635
+hide_table_of_contents: false
+---
+
+v0.15 is a small release. It fixes how cross-request caching plugs into modules, and that fix comes with a breaking API change if you were using the v0.14 caching preview.
+
+{/_ truncate _/}
+
+In v0.14, caching lived inside `.module({ ..., memo })`
+
+In v0.15, caching is enabled with `.caching(...)` after `.module(...)`, and you pass an explicit `{ cacher, serializer }` config.
+
+This api change was needed to fix a type-checking bug in the caching config object,
+
+```typescript
+import { create as createSyncCacher } from "@paramodules/sync-cacher"
+
+const cache = new Map<string, unknown>()
+const syncCaching = {
+    cacher: createSyncCacher(cache),
+    serializer: (value: unknown) => JSON.stringify(value)
+}
+
+const $profile = service("profile")
+    .module({
+        required: [$session, $db],
+        factory: ({ session, db }) => db.profiles.findByUserId(session.userId)
+    })
+    .caching(syncCaching)
+```
+
+`.invalidate()` still works the same way on cached modules. The cache key still follows the dependency cascade; only the wiring changed.
+
+See the [caching section in the README](https://paramodules.github.io/core/) for sync, async, and custom cacher examples.
