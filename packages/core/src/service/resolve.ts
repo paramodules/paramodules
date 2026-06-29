@@ -102,11 +102,14 @@ export function _resolve<THIS extends UnknownModule>(
         return value
     }
 
+    const _caching = this._caching
     const get =
-        this._caching ?
-            this._caching.cacher(
-                factoryRunner,
-                buildCacheKey({ ...this, _caching: this._caching }, registry)
+        _caching ?
+            once(
+                _caching.cacher(
+                    factoryRunner,
+                    buildCacheKey({ ...this, _caching }, registry)
+                )
             )
         :   once(factoryRunner)
 
