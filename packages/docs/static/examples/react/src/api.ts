@@ -55,18 +55,20 @@ export type Reply = (typeof mockReplies)[number]
 export type Post = (typeof populatedPosts)[number]
 export type Comment = Post["comments"][number]
 
-export const $usersPromise = service("usersPromise").module({
-    caching: asyncCaching,
-    factory: async () => {
-        await sleep(3000)
-        return mockUsers
-    }
-})
+export const $usersPromise = service("usersPromise")
+    .module({
+        factory: async () => {
+            await sleep(3000)
+            return mockUsers
+        }
+    })
+    .caching(asyncCaching)
 
-export const $postsPromise = service("postsPromise").module({
-    caching: asyncCaching,
-    factory: async () => {
-        await sleep(3000)
-        return populatedPosts
-    }
-})
+export const $postsPromise = service("postsPromise")
+    .module({
+        factory: async () => {
+            await sleep(3000)
+            return populatedPosts
+        }
+    })
+    .caching(asyncCaching)

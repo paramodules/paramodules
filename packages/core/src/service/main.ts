@@ -10,6 +10,7 @@ import type {
     UnknownService
 } from "#types/public"
 import { assertTM } from "#validation"
+import { caching } from "#service/caching"
 
 export function param<TM extends string, TYPE = any>(
     tm: TM
@@ -77,6 +78,7 @@ export function main<
         request,
         provision,
         invalidate,
+        caching,
         _factory: plan.factory,
         _resolve,
         _required: plan.required ?? [],
@@ -84,7 +86,6 @@ export function main<
         _team,
         _hired: [] as [],
         _warmup: plan.warmup,
-        _caching: plan.caching,
         _version: 0,
         _param: false as const,
         _module: true as const,

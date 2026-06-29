@@ -110,11 +110,9 @@ export type HiredGuard<
     HIRED extends UnknownModule[]
 > =
     [FindDuplicateTrademark<HIRED>] extends [never] ?
-        TeamHasCircular<
-            THIS["tm"],
-            MergeHired<THIS, HIRED>,
-            THIS["_optionals"]
-        > extends true ?
+        TeamHasCircular<THIS["tm"], MergeHired<THIS, HIRED>, Param[]> extends (
+            true
+        ) ?
             CircularModuleError[]
         :   HIRED
     :   DuplicateServiceError[]

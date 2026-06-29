@@ -64,8 +64,8 @@ describe("Context Propagation", () => {
 
         const $main = service("main").module({
             factory: (deps, ctx) => {
-                const contextualSupply = ctx($contextual).request({})
-                const value = contextualSupply.get()
+                const contextualSupplier = ctx($contextual).request({})
+                const value = contextualSupplier.get()
 
                 expect(factoryMock).toHaveBeenCalledTimes(1)
                 expect(value).toBe("value")
@@ -527,24 +527,26 @@ describe("Context Propagation", () => {
 
             const $main = service("main").module({
                 factory: (supplies, ctx) => {
-                    const supply = ctx($contextual1)
+                    const supplier = ctx($contextual1)
                         .hire($contextual2)
                         .request({})
 
                     expectTypeOf(
-                        supply.market.contextual2
+                        supplier.market.contextual2
                     ).not.toEqualTypeOf<any>()
-                    expectTypeOf(supply.market.contextual2).toExtend<
+                    expectTypeOf(supplier.market.contextual2).toExtend<
                         Supplier<any>
                     >()
-                    expect(supply.market.contextual2.get()).toBe(
+                    expect(supplier.market.contextual2.get()).toBe(
                         "contextual2-value"
                     )
 
                     expectTypeOf(
-                        supply.supplies.contextual2
+                        supplier.supplies.contextual2
                     ).not.toEqualTypeOf<any>()
-                    expectTypeOf(supply.supplies.contextual2).toExtend<string>()
+                    expectTypeOf(
+                        supplier.supplies.contextual2
+                    ).toExtend<string>()
                 }
             })
 
@@ -576,9 +578,9 @@ describe("Context Propagation", () => {
             const $main = service("main").module({
                 required: [$A],
                 factory: (deps, ctx) => {
-                    // @ts-expect-error - param supply paramB is not supplied
+                    // @ts-expect-error - param paramB is not supplied
                     ctx($B).request({})
-                    // Works, param supply paramA doesn't need to be supplied, reused from deps
+                    // Works, param paramA doesn't need to be supplied, reused from deps
                     ctx($B)
                         .request(index($paramB.of("paramB-value")))
                         .get()

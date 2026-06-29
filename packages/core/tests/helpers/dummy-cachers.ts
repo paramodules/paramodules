@@ -28,3 +28,6 @@ export function dummySyncCacher(store: CacheStore = createStore()): Cacher {
         }
     }
 }
+
+export const dummyAsyncCacher: (store?: CacheStore) => AsyncCacher =
+    dummySyncCacher

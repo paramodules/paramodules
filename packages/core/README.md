@@ -256,33 +256,35 @@ const $cart = service("cart").param<{
     items: Array<{ productId: string; quantity: number }>
 }>()
 
-const $cartProducts = service("cartProducts").module({
-    required: [$cart],
-    factory: ({ cart }) =>
-        db.products.findManyById(cart.items.map((item) => item.productId)),
-    caching: syncCaching
-})
+const $cartProducts = service("cartProducts")
+    .module({
+        required: [$cart],
+        factory: ({ cart }) =>
+            db.products.findManyById(cart.items.map((item) => item.productId))
+    })
+    .caching(syncCaching)
 
-const $checkoutQuote = service("checkoutQuote").module({
-    required: [$cart, $cartProducts],
-    factory: ({ cart, cartProducts }) => {
-        const lines = cart.items.map((item) => {
-            const product = cartProducts.find((p) => p.id === item.productId)
+const $checkoutQuote = service("checkoutQuote")
+    .module({
+        required: [$cart, $cartProducts],
+        factory: ({ cart, cartProducts }) => {
+            const lines = cart.items.map((item) => {
+                const product = cartProducts.find((p) => p.id === item.productId)
+
+                return {
+                    name: product.name,
+                    quantity: item.quantity,
+                    lineTotal: product.price * item.quantity
+                }
+            })
 
             return {
-                name: product.name,
-                quantity: item.quantity,
-                lineTotal: product.price * item.quantity
+                lines,
+                subtotal: lines.reduce((sum, line) => sum + line.lineTotal, 0)
             }
-        })
-
-        return {
-            lines,
-            subtotal: lines.reduce((sum, line) => sum + line.lineTotal, 0)
         }
-    },
-    caching: syncCaching
-})
+    })
+    .caching(syncCaching)
 
 const cart = {
     items: [{ productId: "coffee-mug", quantity: 2 }]
@@ -301,7 +303,7 @@ const third = $checkoutQuote.request(index($cart.of(cart))).get()
 const refreshed = second === third // false, because cartProducts has been invalidated
 ```
 
-Caching is opt-in. Add a `caching` config to `.module(...)` when a module should reuse its value across requests. Paramodules is entirely stateless unless you activate caching. More info on caching is in `Advanced usage` below.
+Caching is opt-in. Call `.caching(...)` after `.module(...)` when a module should reuse its value across requests. Paramodules is entirely stateless unless you activate caching. More info on caching is in `Advanced usage` below.
 
 ### Query-Building Cascades
 
@@ -348,7 +350,7 @@ const $myDrafts = service("myDrafts").module({
 | `optionals`           | Params a module can use if supplied; factories see them as `T \| undefined`.              |
 | `factory`             | The function that produces the module value from inferred supplies and `ctx`.             |
 | `warmup`              | Optional hook invoked after the factory returns, useful for eager warming of lazy values. |
-| `caching`             | Optional cross-request cache config for a module.                                         |
+| `.caching(config)`    | Enable cross-request caching after `.module(...)`.                                      |
 | `.of(value)`          | Stamp a concrete value onto a param or module, producing a supplier.                      |
 | `.request(...)`       | Resolve a module for one set of supplied inputs.                                          |
 | `.provision()`        | Pre-resolve graph parts that do not depend on open request-time params.                   |
@@ -573,7 +575,7 @@ app.addTodo("write README")
 
 ### Caching
 
-By default, factories are memoized inside one request snapshot. Add `caching` when a module should reuse values across separate requests and `.request(...)` calls. Remember, paramodules is entirely stateless, unless you activate caching.
+By default, factories are memoized inside one request snapshot. Call `.caching(...)` after `.module(...)` when a module should reuse values across separate requests and `.request(...)` calls. Remember, paramodules is entirely stateless, unless you activate caching.
 
 ```ts
 import { service, index } from "paramodules"
@@ -589,19 +591,21 @@ const syncCaching = {
 
 const $session = service("session").param<{ userId: string }>()
 
-const $profile = service("profile").module({
-    required: [$session],
-    factory: ({ session }) => db.profiles.findByUserId(session.userId),
-    caching: syncCaching
-})
+const $profile = service("profile")
+    .module({
+        required: [$session],
+        factory: ({ session }) => db.profiles.findByUserId(session.userId)
+    })
+    .caching(syncCaching)
 
-const $profileSummary = service("profileSummary").module({
-    required: [$profile],
-    factory: ({ profile }) => ({
-        label: `${profile.label} (${profile.id})`
-    }),
-    caching: syncCaching
-})
+const $profileSummary = service("profileSummary")
+    .module({
+        required: [$profile],
+        factory: ({ profile }) => ({
+            label: `${profile.label} (${profile.id})`
+        })
+    })
+    .caching(syncCaching)
 
 const res1 = $profileSummary
     .request(index($session.of({ userId: "ada" })))
@@ -653,18 +657,19 @@ For promise-returning factories, use `@paramodules/async-cacher`, which wraps `@
 ```ts
 import { create as createAsyncCacher } from "@paramodules/async-cacher"
 
-const $profile = service("asyncProfile").module({
-    required: [$session],
-    factory: async ({ session }) =>
-        await db.profiles.findByUserId(session.userId),
-    caching: {
+const $profile = service("asyncProfile")
+    .module({
+        required: [$session],
+        factory: async ({ session }) =>
+            await db.profiles.findByUserId(session.userId)
+    })
+    .caching({
         cacher: createAsyncCacher({
             cache: new Map(),
             ttl: 60_000
         }),
         serializer
-    }
-})
+    })
 ```
 
 #### Build your own cache config
@@ -829,24 +834,40 @@ const $region = service("region").param<"us" | "eu">().init("us")
 
 Sets a default value for a param. Modules that require an initialized param can be requested without supplying it, while callers may still override it with `.of(...)`.
 
-### `.module({ required?, optionals?, factory, warmup?, caching? })`
+### `.module({ required?, optionals?, factory, warmup? })`
 
 ```ts
-const $user = service("user").module({
-    required: [$session, $db],
-    optionals: [$logger],
-    factory: ({ session, db, logger }) => db.users.findById(session.userId),
-    warmup: (userPromise) => {
-        void userPromise
-    },
-    caching: {
+const $user = service("user")
+    .module({
+        required: [$session, $db],
+        optionals: [$logger],
+        factory: ({ session, db, logger }) => db.users.findById(session.userId),
+        warmup: (userPromise) => {
+            void userPromise
+        }
+    })
+    .caching({
         cacher,
         serializer: (value) => JSON.stringify(value)
-    }
-})
+    })
 ```
 
-Creates a module. `required` values are inferred as present. `optionals` are inferred as `T | undefined`. The factory receives `(supplies, ctx)`. `caching` optionally wraps the factory in a cross-request cacher and uses `serializer` to include supplied values in the cache key.
+Creates a module. `required` values are inferred as present. `optionals` are inferred as `T | undefined`. The factory receives `(supplies, ctx)`. `.caching(...)` optionally wraps the factory in a cross-request cacher and uses `serializer` to include supplied values in the cache key.
+
+### `.caching(config)`
+
+```ts
+const $user = service("user")
+    .module({
+        factory: ({ session, db }) => db.users.findById(session.userId)
+    })
+    .caching({
+        cacher,
+        serializer: (value) => JSON.stringify(value)
+    })
+```
+
+Enables cross-request caching after `.module(...)`. Call it once `TYPE` is known so sync and async cachers are checked correctly.
 
 ### `.of(value)`
 
@@ -883,7 +904,7 @@ Pre-resolves graph parts that do not depend on open params. Call it on roots you
 $user.invalidate()
 ```
 
-Bumps a cached module's internal version. Future requests for that module, and for cached modules that depend on it transitively, use a new cache key and recompute. Only modules declared with `caching` can be invalidated.
+Bumps a cached module's internal version. Future requests for that module, and for cached modules that depend on it transitively, use a new cache key and recompute. Only modules configured with `.caching(...)` can be invalidated.
 
 ### `.mock(plan)`
 

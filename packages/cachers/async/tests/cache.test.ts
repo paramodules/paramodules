@@ -18,10 +18,11 @@ describe("async cacher", () => {
     it("returns cached values for repeated async requests", async () => {
         const factory = vi.fn(async () => ({ id: Symbol("value") }))
 
-        const $cached = service("asyncCached").module({
-            factory,
-            caching: asyncCaching()
-        })
+        const $cached = service("asyncCached")
+            .module({
+                factory
+            })
+            .caching(asyncCaching())
 
         const first = await $cached.request({}).get()
         const second = await $cached.request({}).get()
@@ -37,16 +38,18 @@ describe("async cacher", () => {
             id: Symbol("async-root")
         }))
 
-        const $asyncLeaf = service("asyncLeaf").module({
-            factory: leafFactory,
-            caching: asyncCaching()
-        })
+        const $asyncLeaf = service("asyncLeaf")
+            .module({
+                factory: leafFactory
+            })
+            .caching(asyncCaching())
 
-        const $asyncRoot = service("asyncRoot").module({
-            required: [$asyncLeaf],
-            factory: rootFactory,
-            caching: asyncCaching()
-        })
+        const $asyncRoot = service("asyncRoot")
+            .module({
+                required: [$asyncLeaf],
+                factory: rootFactory
+            })
+            .caching(asyncCaching())
 
         const first = await $asyncRoot.request({}).get()
         const second = await $asyncRoot.request({}).get()
@@ -64,5 +67,16 @@ describe("async cacher", () => {
         expect(fourth).toBe(third)
         expect(leafFactory).toHaveBeenCalledTimes(2)
         expect(rootFactory).toHaveBeenCalledTimes(2)
+    })
+
+    it("works with required dependencies", () => {
+        const $params = service("params").param<Record<string, string>>()
+
+        service("inlineAsyncWithRequired")
+            .module({
+                required: [$params],
+                factory: async ({ params }) => params
+            })
+            .caching(asyncCaching())
     })
 })

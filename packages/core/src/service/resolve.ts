@@ -40,14 +40,11 @@ export function Ctx<
 }
 
 /**
- * Internal build method that creates the actual supply.
- * This is separated from assemble() to allow for internal reuse during
- * reassembly and recursive dependency resolution. It creates the factory
- * closure with the deps and ctx accessors and handles initialization.
+ * Internal resolve method that creates the actual supplier.
  *
- * @param this - The app service building the supply
- * @param registry - The supply map providing resolved dependencies
- * @returns A supply instance with unpack(), deps, supplies, and ctx methods
+ * @param this - The module building the supplier
+ * @param registry - The supplier map providing resolved dependencies
+ * @returns A supplier instance with get(), supplies, market, service, _ctx, and _requested methods
  * @internal
  */
 export function _resolve<THIS extends UnknownModule>(

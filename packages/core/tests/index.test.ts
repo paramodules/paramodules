@@ -506,8 +506,8 @@ describe("services", () => {
                 factory: () => "empty"
             })
 
-            const emptySupply = $empty.request({})
-            expect(emptySupply.get()).toBe("empty")
+            const emptySupplier = $empty.request({})
+            expect(emptySupplier.get()).toBe("empty")
         })
     })
 })

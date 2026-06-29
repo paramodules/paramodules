@@ -15,10 +15,11 @@ describe("sync cacher", () => {
     it("returns cached values for repeated sync requests", () => {
         const factory = vi.fn(() => ({ id: Symbol("value") }))
 
-        const $cached = service("cached").module({
-            factory,
-            caching: syncCaching()
-        })
+        const $cached = service("cached")
+            .module({
+                factory
+            })
+            .caching(syncCaching())
 
         const first = $cached.request({}).get()
         const second = $cached.request({}).get()
@@ -34,16 +35,18 @@ describe("sync cacher", () => {
             id: Symbol("root")
         }))
 
-        const $leaf = service("leaf").module({
-            factory: leafFactory,
-            caching: syncCaching()
-        })
+        const $leaf = service("leaf")
+            .module({
+                factory: leafFactory
+            })
+            .caching(syncCaching())
 
-        const $root = service("root").module({
-            required: [$leaf],
-            factory: rootFactory,
-            caching: syncCaching()
-        })
+        const $root = service("root")
+            .module({
+                required: [$leaf],
+                factory: rootFactory
+            })
+            .caching(syncCaching())
 
         const first = $root.request({}).get()
         const second = $root.request({}).get()
@@ -81,11 +84,12 @@ describe("sync cacher", () => {
             factory: () => "mock"
         })
 
-        const $root = service("rootWithMock").module({
-            required: [$dep],
-            factory: rootFactory,
-            caching: syncCaching()
-        })
+        const $root = service("rootWithMock")
+            .module({
+                required: [$dep],
+                factory: rootFactory
+            })
+            .caching(syncCaching())
 
         const first = $root.hire($mockDepA).request({}).get()
         const second = $root.hire($mockDepB).request({}).get()
