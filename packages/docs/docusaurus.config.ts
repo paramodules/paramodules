@@ -5,9 +5,9 @@ import { githubNavbarHtml, npmNavbarHtml } from "./navbarIcons"
 import simpleAnalyticsPlugin from "./simpleAnalyticsPlugin"
 
 const config: Config = {
-    title: "paramodules",
+    title: "Paramodules — Request-time module primitive — Pure, fully type-inferred, containerless and request-scoped dependency injection for complex, cascading and deeply-nested Typescript application architecture",
     tagline:
-        "Stateless, parametrizable runtime modules for cascading TypeScript applications.",
+        "Parametrizable module primitives for any TypeScript stack — define modules, request them with dynamic params at the entry point, and control cascades through a fully inferred dependency graph.",
     favicon: "img/paramodules-logo.png",
 
     future: {
@@ -53,12 +53,14 @@ const config: Config = {
     ],
 
     themeConfig: {
+        image: "img/paramodules-logo.png",
         colorMode: {
             defaultMode: "dark",
             disableSwitch: true,
             respectPrefersColorScheme: false
         },
         navbar: {
+            title: "paramodules",
             logo: {
                 alt: "paramodules home",
                 src: "img/paramodules-logo.png",

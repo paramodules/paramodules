@@ -2,6 +2,7 @@ import { type ReactNode } from "react"
 import clsx from "clsx"
 import Link from "@docusaurus/Link"
 import Head from "@docusaurus/Head"
+import useDocusaurusContext from "@docusaurus/useDocusaurusContext"
 import Layout from "@theme/Layout"
 import Heading from "@theme/Heading"
 import CodeBlock from "@theme/CodeBlock"
@@ -301,21 +302,21 @@ function Hero(): ReactNode {
                 <div className={styles.heroContent}>
                     <div className={styles.heroText}>
                         <p className={styles.eyebrow}>
-                            Modular, full-stack, and fully type-inferred
-                            cascade-driven architecture
+                            Stack-agnostic, parametrizable, modular, fully
+                            type-inferred cascade-driven architecture
                         </p>
                         <Heading as="h1" className={styles.heroTitle}>
                             <span className={styles.heroTitleKeep}>
                                 Request-time
                             </span>{" "}
-                            modules for TypeScript
+                            module primitives for TypeScript
                         </Heading>
-                        <p className={styles.heroSubtitle}>
+                        <Heading as="h2" className={styles.heroSubtitle}>
                             Paramodules are stateless, request-scoped module
-                            factories that carry their dependency graph. Provide
-                            params at the entry point, request a module, and let
-                            TypeScript infer the graph end to end.
-                        </p>
+                            primitives that carry their dependency graph.
+                            Provide params at the entry point, request a module,
+                            and let TypeScript infer the graph end to end.
+                        </Heading>
                         <div className={styles.heroButtons}>
                             <OpenExampleButton
                                 className={clsx("button", styles.primaryButton)}
@@ -673,15 +674,14 @@ function Install(): ReactNode {
 }
 
 export default function Home(): ReactNode {
+    const { siteConfig } = useDocusaurusContext()
+
     return (
-        <Layout
-            title="paramodules"
-            description="Stateless, parametrizable runtime modules for cascading TypeScript applications."
-        >
+        <Layout description={siteConfig.tagline}>
             <Head>
                 <meta
                     name="keywords"
-                    content="typescript, dependency graph, runtime modules, cascade, request scoped, paramodules"
+                    content="typescript, dependency injection, DI container, dependency graph, runtime modules, cascade, request scoped, paramodules"
                 />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
             </Head>
