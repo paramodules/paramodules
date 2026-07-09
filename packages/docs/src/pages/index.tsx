@@ -291,6 +291,52 @@ const cascadeExamples = [
     }
 ] as const
 
+const nestComparisonGroups = [
+    {
+        title: "Like Nest, but simpler",
+        items: [
+            {
+                title: "A primitive, not a framework",
+                body: "Nest is an application framework you build your app inside, with its bootstrap, its conventions, and its lifecycle. Paramodules is a single primitive you reach for where you need it, so you keep your own control flow and there is nothing to lock into."
+            },
+            {
+                title: "Two concepts, not a dozen",
+                body: "The whole model is params and modules. There is no separate vocabulary of providers, controllers, injection tokens, provider scopes, and dynamic modules to learn before you are productive."
+            },
+            {
+                title: "Plain values, no experimental decorators, no reflect-metadata",
+                body: "Modules are ordinary typed values wired together. No need to add metadata to functions with decorators, and have a runtime read the metadata to inject the needed dependencies. Dependencies are injected via simple closures."
+            },
+            {
+                title: "A fraction of the footprint",
+                body: "Paramodules ships as a few kilobytes with zero runtime dependencies — roughly 25× lighter than Nest's core."
+            }
+        ]
+    },
+    {
+        title: "What Nest's architecture cannot provide",
+        featured: true,
+        items: [
+            {
+                title: "Functional and stateless",
+                body: "Nest stores module registrations statefully in a memory map, which needs explicit lifecycles and can lead to concurrency and security issues, since multiple requests access the same objects in memory. In paramodules, each .request() is its own isolated scope, unless you opt into caching."
+            },
+            {
+                title: "Fully type-inferred modules",
+                body: "Nest wires providers from runtime metadata that only settles at server boot time. Paramodules functional nature means Typescript can compute all types of a module using the explicit list of required dependencies."
+            },
+            {
+                title: "Transitive cache invalidation",
+                body: "Nest registers modules together in a container, but the dependency relations between them are not tracked. In paramodules, invalidating one module from the cache invalidates all its dependents automatically."
+            },
+            {
+                title: "Framework and environment agnosticism",
+                body: "Nest modules can only be executed by its server runtime. A paramodule is plain TypeScript, so it can run anywhere Typescript runs, including the browser."
+            }
+        ]
+    }
+] as const
+
 function Hero(): ReactNode {
     return (
         <section className={styles.hero}>
@@ -444,6 +490,49 @@ function Decoupling(): ReactNode {
                         stays part of the primitive instead of something a
                         container rebuilds later.
                     </p>
+                </div>
+            </div>
+        </section>
+    )
+}
+
+function NestComparison(): ReactNode {
+    return (
+        <section className={styles.comparisonSection}>
+            <div className="container">
+                <div className={styles.sectionHeader}>
+                    <Heading as="h2">Coming from Nest.JS?</Heading>
+                    <p>
+                        Both Paramodules and Nest.JS give you a modular
+                        architecture and a system for Dependency Injection. But
+                        here's how Paramodules does it best.
+                    </p>
+                </div>
+
+                <div className={styles.comparisonGroups}>
+                    {nestComparisonGroups.map((group) => (
+                        <article
+                            className={clsx(
+                                styles.comparisonGroup,
+                                "featured" in group &&
+                                    group.featured &&
+                                    styles.comparisonGroupFeatured
+                            )}
+                            key={group.title}
+                        >
+                            <div className={styles.comparisonGroupHeader}>
+                                <Heading as="h3">{group.title}</Heading>
+                            </div>
+                            <ul className={styles.comparisonList}>
+                                {group.items.map((item) => (
+                                    <li key={item.title}>
+                                        <h4>{item.title}</h4>
+                                        <p>{item.body}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        </article>
+                    ))}
                 </div>
             </div>
         </section>
@@ -694,6 +783,7 @@ export default function Home(): ReactNode {
                 <AiAgents />
                 <ValueProps />
                 <Examples />
+                <NestComparison />
                 <Install />
             </main>
         </Layout>
