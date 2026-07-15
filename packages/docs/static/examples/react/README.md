@@ -1,7 +1,7 @@
-# @paramodules/react example
+# Paramodules React example
 
-A small social feed wireframe that shows how `@paramodules/react` connects
-paramodules to React Context. Components are paramodules modules; params like
+A small social feed wireframe that shows how `paramodules` connects
+paramodules to React. Components are paramodules modules; params like
 `currentPost` and `userState` flow through the tree with `ParamsProvider` instead
 of prop drilling.
 

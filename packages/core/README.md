@@ -243,12 +243,12 @@ Now profile and notifications are still loaded eagerly, but you can toggle easil
 In most frameworks, cache invalidation must be done manually. Paramodules understand cache dependencies, so invalidating one module cascades and invalidates all dependents. The trick is to use the whole dependency graph to build the module's cache key.
 
 ```ts
-import { create as createSyncCacher } from "@paramodules/sync-cacher"
+import { create as createValueCacher } from "@paramodules/value-cacher"
 
 const cache = new Map<string, unknown>()
 const serializer = (value: unknown) => JSON.stringify(value)
-const syncCaching = {
-    cacher: createSyncCacher(cache),
+const valueCaching = {
+    cacher: createValueCacher(cache),
     serializer
 }
 
@@ -269,7 +269,9 @@ const $checkoutQuote = service("checkoutQuote")
         required: [$cart, $cartProducts],
         factory: ({ cart, cartProducts }) => {
             const lines = cart.items.map((item) => {
-                const product = cartProducts.find((p) => p.id === item.productId)
+                const product = cartProducts.find(
+                    (p) => p.id === item.productId
+                )
 
                 return {
                     name: product.name,
@@ -284,7 +286,7 @@ const $checkoutQuote = service("checkoutQuote")
             }
         }
     })
-    .caching(syncCaching)
+    .caching(valueCaching)
 
 const cart = {
     items: [{ productId: "coffee-mug", quantity: 2 }]
@@ -350,7 +352,7 @@ const $myDrafts = service("myDrafts").module({
 | `optionals`           | Params a module can use if supplied; factories see them as `T \| undefined`.              |
 | `factory`             | The function that produces the module value from inferred supplies and `ctx`.             |
 | `warmup`              | Optional hook invoked after the factory returns, useful for eager warming of lazy values. |
-| `.caching(config)`    | Enable cross-request caching after `.module(...)`.                                      |
+| `.caching(config)`    | Enable cross-request caching after `.module(...)`.                                        |
 | `.of(value)`          | Stamp a concrete value onto a param or module, producing a supplier.                      |
 | `.request(...)`       | Resolve a module for one set of supplied inputs.                                          |
 | `.provision()`        | Pre-resolve graph parts that do not depend on open request-time params.                   |
@@ -579,13 +581,13 @@ By default, factories are memoized inside one request snapshot. Call `.caching(.
 
 ```ts
 import { service, index } from "paramodules"
-import { create as createSyncCacher } from "@paramodules/sync-cacher"
+import { create as createValueCacher } from "@paramodules/value-cacher"
 
 const cache = new Map<string, unknown>()
 const serializer = (value: unknown) => JSON.stringify(value)
 
-const syncCaching = {
-    cacher: createSyncCacher(cache),
+const valueCaching = {
+    cacher: createValueCacher(cache),
     serializer
 }
 
@@ -605,7 +607,7 @@ const $profileSummary = service("profileSummary")
             label: `${profile.label} (${profile.id})`
         })
     })
-    .caching(syncCaching)
+    .caching(valueCaching)
 
 const res1 = $profileSummary
     .request(index($session.of({ userId: "ada" })))
@@ -652,19 +654,19 @@ const isCached5 = res5 === res6 // false, because the hired mock has its own _mo
 
 The cache key is built from the cached module identity and its cascade: the current module trademark, its version, mock identity when present, transitive module versions, and serialized params. That means different request params get different cache entries, and invalidating an upstream cached module changes the cache key for downstream cached modules.
 
-For promise-returning factories, use `@paramodules/async-cacher`, which wraps `@epic-web/cachified`.
+For promise-returning factories, use `@paramodules/resource-cacher`, which wraps `@epic-web/cachified`.
 
 ```ts
-import { create as createAsyncCacher } from "@paramodules/async-cacher"
+import { create as createResourceCacher } from "@paramodules/resource-cacher"
 
-const $profile = service("asyncProfile")
+const $profile = service("profileResource")
     .module({
         required: [$session],
         factory: async ({ session }) =>
             await db.profiles.findByUserId(session.userId)
     })
     .caching({
-        cacher: createAsyncCacher({
+        cacher: createResourceCacher({
             cache: new Map(),
             ttl: 60_000
         }),
@@ -682,15 +684,15 @@ Choose a serializer that is stable for the values in your graph. `JSON.stringify
 
 Most apps can start with the two provided cacher packages:
 
-- `@paramodules/sync-cacher` for synchronous factories and simple `Map`-like stores.
-- `@paramodules/async-cacher` for promise-returning factories, TTLs, stale handling, and other `@epic-web/cachified` features.
+- `@paramodules/value-cacher` for synchronous factories and simple `Map`-like stores.
+- `@paramodules/resource-cacher` for promise-returning factories, TTLs, stale handling, and other `@epic-web/cachified` features.
 
 A cacher is just the adapter between paramodules and your storage. Paramodules gives it the factory runner and the cache key it built from the cascade. The cacher returns the memoized factory connected to your cache.
 
 ```ts
 type Cacher = <T>(factoryRunner: () => T, cacheKey: string) => () => T
 
-type AsyncCacher = <T extends Promise<unknown>>(
+type ResourceCacher = <T extends Promise<unknown>>(
     factoryRunner: () => T,
     cacheKey: string
 ) => () => T
@@ -698,7 +700,7 @@ type AsyncCacher = <T extends Promise<unknown>>(
 type Serializer = (value: unknown) => string
 ```
 
-The sync cacher is intentionally small:
+The value cacher is intentionally small:
 
 ```ts
 type CacheLike = {
@@ -707,7 +709,7 @@ type CacheLike = {
     has: (key: string) => boolean
 }
 
-function createSyncCacher(store: CacheLike): Cacher {
+function createValueCacher(store: CacheLike): Cacher {
     return (factoryRunner, cacheKey) => {
         return () => {
             if (!store.has(cacheKey)) {
@@ -720,7 +722,7 @@ function createSyncCacher(store: CacheLike): Cacher {
 }
 ```
 
-You can create your own sync or async cacher if you extra logging, metrics, or want to use another swr provider than the default @epic-web/cachified, for example. Just implement it following the type signature shown above. But most customization should be done instead at the cache level than at the cacher level.
+You can create your own value or resource cacher if you extra logging, metrics, or want to use another swr provider than the default @epic-web/cachified, for example. Just implement it following the type signature shown above. But most customization should be done instead at the cache level than at the cacher level.
 
 ### Stub a module with `.of(...)`
 
@@ -867,7 +869,7 @@ const $user = service("user")
     })
 ```
 
-Enables cross-request caching after `.module(...)`. Call it once `TYPE` is known so sync and async cachers are checked correctly.
+Enables cross-request caching after `.module(...)`.
 
 ### `.of(value)`
 

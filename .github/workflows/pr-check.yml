@@ -18,20 +18,13 @@ jobs:
     build-pkg:
         needs: test
         runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                include:
-                    - filter: paramodules
-                      dist_path: packages/core/dist
-                    - filter: "@paramodules/react"
-                      dist_path: packages/react/dist
         steps:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/setup
             - uses: ./.github/actions/build-pkg
               with:
-                  filter: ${{ matrix.filter }}
-                  dist_path: ${{ matrix.dist_path }}
+                  filter: paramodules
+                  dist_path: packages/react/dist
 
     build-docs:
         needs: test

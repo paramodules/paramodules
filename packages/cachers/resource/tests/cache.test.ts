@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
 import { service } from "paramodules"
-import { create as createAsyncCacher } from ".."
+import { create as createResourceCacher } from ".."
 
 const basicKeySerializer = (value: unknown) => JSON.stringify(value)
 
-function asyncCaching() {
+function resourceCaching() {
     return {
-        cacher: createAsyncCacher({
+        cacher: createResourceCacher({
             cache: new Map(),
             ttl: 60_000
         }),
@@ -14,15 +14,15 @@ function asyncCaching() {
     }
 }
 
-describe("async cacher", () => {
+describe("resource cacher", () => {
     it("returns cached values for repeated async requests", async () => {
         const factory = vi.fn(async () => ({ id: Symbol("value") }))
 
-        const $cached = service("asyncCached")
+        const $cached = service("resourceCached")
             .module({
                 factory
             })
-            .caching(asyncCaching())
+            .caching(resourceCaching())
 
         const first = await $cached.request({}).get()
         const second = await $cached.request({}).get()
@@ -31,37 +31,37 @@ describe("async cacher", () => {
         expect(factory).toHaveBeenCalledTimes(1)
     })
 
-    it("invalidates transitive async cache keys when a dependency is invalidated", async () => {
+    it("invalidates transitive resource cache keys when a dependency is invalidated", async () => {
         const leafFactory = vi.fn(async () => "leaf")
-        const rootFactory = vi.fn(async ({ asyncLeaf }) => ({
-            leaf: asyncLeaf,
-            id: Symbol("async-root")
+        const rootFactory = vi.fn(async ({ resourceLeaf }) => ({
+            leaf: resourceLeaf,
+            id: Symbol("resource-root")
         }))
 
-        const $asyncLeaf = service("asyncLeaf")
+        const $resourceLeaf = service("resourceLeaf")
             .module({
                 factory: leafFactory
             })
-            .caching(asyncCaching())
+            .caching(resourceCaching())
 
-        const $asyncRoot = service("asyncRoot")
+        const $resourceRoot = service("resourceRoot")
             .module({
-                required: [$asyncLeaf],
+                required: [$resourceLeaf],
                 factory: rootFactory
             })
-            .caching(asyncCaching())
+            .caching(resourceCaching())
 
-        const first = await $asyncRoot.request({}).get()
-        const second = await $asyncRoot.request({}).get()
+        const first = await $resourceRoot.request({}).get()
+        const second = await $resourceRoot.request({}).get()
 
         expect(second).toBe(first)
         expect(leafFactory).toHaveBeenCalledTimes(1)
         expect(rootFactory).toHaveBeenCalledTimes(1)
 
-        $asyncLeaf.invalidate()
+        $resourceLeaf.invalidate()
 
-        const third = await $asyncRoot.request({}).get()
-        const fourth = await $asyncRoot.request({}).get()
+        const third = await $resourceRoot.request({}).get()
+        const fourth = await $resourceRoot.request({}).get()
 
         expect(third).not.toBe(first)
         expect(fourth).toBe(third)
@@ -72,11 +72,11 @@ describe("async cacher", () => {
     it("works with required dependencies", () => {
         const $params = service("params").param<Record<string, string>>()
 
-        service("inlineAsyncWithRequired")
+        service("inlineResourceWithRequired")
             .module({
                 required: [$params],
                 factory: async ({ params }) => params
             })
-            .caching(asyncCaching())
+            .caching(resourceCaching())
     })
 })

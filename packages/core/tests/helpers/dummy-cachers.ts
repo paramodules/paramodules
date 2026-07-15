@@ -1,4 +1,4 @@
-import type { AsyncCacher, Cacher } from "#types/public"
+import type { ResourceCacher, Cacher } from "#types/public"
 
 type CacheStore = {
     get: (key: string) => unknown
@@ -18,7 +18,7 @@ function createStore(): CacheStore {
 }
 
 /** Minimal in-memory sync cacher for core integration tests. */
-export function dummySyncCacher(store: CacheStore = createStore()): Cacher {
+export function dummyValueCacher(store: CacheStore = createStore()): Cacher {
     return <TYPE>(factoryRunner: () => TYPE, cacheKey: string) => {
         return () => {
             if (!store.has(cacheKey)) {
@@ -29,5 +29,5 @@ export function dummySyncCacher(store: CacheStore = createStore()): Cacher {
     }
 }
 
-export const dummyAsyncCacher: (store?: CacheStore) => AsyncCacher =
-    dummySyncCacher
+export const dummyResourceCacher: (store?: CacheStore) => ResourceCacher =
+    dummyValueCacher

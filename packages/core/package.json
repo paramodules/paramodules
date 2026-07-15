@@ -36,7 +36,8 @@
         "vitest": "^4.0.10",
         "@vitest/coverage-v8": "^4.0.10",
         "vite": "^8.0.0",
-        "typescript": "^6.0.2",
+        "typescript": "catalog:",
+        "@typescript/native": "catalog:",
         "tsup": "^8.5.1",
         "turbo": "^2.5.5"
     }

@@ -31,12 +31,12 @@
         "@docusaurus/tsconfig": "3.10.1",
         "@docusaurus/types": "3.10.1",
         "paramodules": "workspace:^",
-        "@paramodules/react": "workspace:^",
-        "@paramodules/sync-cacher": "workspace:^",
-        "@paramodules/async-cacher": "workspace:^",
+        "@paramodules/value-cacher": "workspace:^",
+        "@paramodules/resource-cacher": "workspace:^",
         "@types/react": "^19.2.17",
         "@types/react-dom": "^19.2.3",
-        "typescript": "6.0.3",
+        "typescript": "catalog:",
+        "@typescript/native": "catalog:",
         "vite": "^5.4.21"
     },
     "browserslist": {

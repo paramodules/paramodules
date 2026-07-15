@@ -1,16 +1,16 @@
 import { describe, expect, it, vi } from "vitest"
 import { service } from "#index"
-import { dummySyncCacher, dummyAsyncCacher } from "./helpers/dummy-cachers"
+import { dummyValueCacher, dummyResourceCacher } from "./helpers/dummy-cachers"
 
 const serializer = (value: unknown) => JSON.stringify(value)
 
-const syncCaching = {
-    cacher: dummySyncCacher(),
+const valueCaching = {
+    cacher: dummyValueCacher(),
     serializer
 }
 
-const asyncCaching = {
-    cacher: dummyAsyncCacher(),
+const resourceCaching = {
+    cacher: dummyResourceCacher(),
     serializer
 }
 
@@ -25,15 +25,15 @@ describe("caching", () => {
         )
     })
 
-    describe("sync", () => {
-        it("returns cached values for repeated sync requests", () => {
+    describe("value", () => {
+        it("returns cached values for repeated requests", () => {
             const factory = vi.fn(() => ({ id: Symbol("value") }))
 
             const $cached = service("cached")
                 .module({
                     factory
                 })
-                .caching(syncCaching)
+                .caching(valueCaching)
 
             const first = $cached.request({}).get()
             const second = $cached.request({}).get()
@@ -42,7 +42,7 @@ describe("caching", () => {
             expect(factory).toHaveBeenCalledTimes(1)
         })
 
-        it("invalidates transitive sync cache keys when a dependency is invalidated", () => {
+        it("invalidates transitive value cache keys when a dependency is invalidated", () => {
             const leafFactory = vi.fn(() => "leaf")
             const rootFactory = vi.fn(({ leaf }) => ({
                 leaf,
@@ -53,14 +53,14 @@ describe("caching", () => {
                 .module({
                     factory: leafFactory
                 })
-                .caching(syncCaching)
+                .caching(valueCaching)
 
             const $root = service("root")
                 .module({
                     required: [$leaf],
                     factory: rootFactory
                 })
-                .caching(syncCaching)
+                .caching(valueCaching)
 
             const first = $root.request({}).get()
             const second = $root.request({}).get()
@@ -80,7 +80,7 @@ describe("caching", () => {
             expect(rootFactory).toHaveBeenCalledTimes(2)
         })
 
-        it("keeps hired mocks with the same value in separate sync cache keys", () => {
+        it("keeps hired mocks with the same value in separate value cache keys", () => {
             const rootFactory = vi.fn(({ dep }) => ({
                 dep,
                 id: Symbol("root")
@@ -103,7 +103,7 @@ describe("caching", () => {
                     required: [$dep],
                     factory: rootFactory
                 })
-                .caching(syncCaching)
+                .caching(valueCaching)
 
             const first = $root.hire($mockDepA).request({}).get()
             const second = $root.hire($mockDepB).request({}).get()
@@ -114,7 +114,7 @@ describe("caching", () => {
         })
     })
 
-    describe("async", () => {
+    describe("resource", () => {
         it("returns cached values for repeated async requests", async () => {
             const factory = vi.fn(async () => ({ id: Symbol("value") }))
 
@@ -122,7 +122,7 @@ describe("caching", () => {
                 .module({
                     factory
                 })
-                .caching(asyncCaching)
+                .caching(resourceCaching)
 
             const first = await $cached.request({}).get()
             const second = await $cached.request({}).get()
@@ -131,7 +131,7 @@ describe("caching", () => {
             expect(factory).toHaveBeenCalledTimes(1)
         })
 
-        it("invalidates transitive async cache keys when a dependency is invalidated", async () => {
+        it("invalidates transitive resource cache keys when a dependency is invalidated", async () => {
             const leafFactory = vi.fn(async () => "leaf")
             const rootFactory = vi.fn(async ({ asyncLeaf }) => ({
                 leaf: asyncLeaf,
@@ -142,14 +142,14 @@ describe("caching", () => {
                 .module({
                     factory: leafFactory
                 })
-                .caching(asyncCaching)
+                .caching(resourceCaching)
 
             const $asyncRoot = service("asyncRoot")
                 .module({
                     required: [$asyncLeaf],
                     factory: rootFactory
                 })
-                .caching(asyncCaching)
+                .caching(resourceCaching)
 
             const first = await $asyncRoot.request({}).get()
             const second = await $asyncRoot.request({}).get()
@@ -177,7 +177,7 @@ describe("caching", () => {
                     required: [$params],
                     factory: async ({ params }) => params
                 })
-                .caching(asyncCaching)
+                .caching(resourceCaching)
         })
     })
 })

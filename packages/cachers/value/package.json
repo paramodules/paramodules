@@ -1,8 +1,8 @@
 {
-    "name": "@paramodules/async-cacher",
+    "name": "@paramodules/value-cacher",
     "type": "module",
     "version": "0.0.0",
-    "description": "Synchronous memory cacher for paramodules",
+    "description": "Value memory cacher for paramodules",
     "sideEffects": false,
     "author": "@paramodules",
     "license": "MIT",
@@ -33,9 +33,6 @@
         "test:run": "vitest run --typecheck",
         "typecheck": "vitest run --typecheck.only"
     },
-    "dependencies": {
-        "@epic-web/cachified": "^5.6.2"
-    },
     "devDependencies": {
         "@paramodules/config.eslint": "workspace:*",
         "@paramodules/config.typescript": "workspace:*",
@@ -43,7 +40,8 @@
         "vitest": "^4.0.10",
         "@vitest/coverage-v8": "^4.0.10",
         "vite": "^8.0.0",
-        "typescript": "^6.0.2",
+        "typescript": "catalog:",
+        "@typescript/native": "catalog:",
         "tsup": "^8.5.1",
         "turbo": "^2.5.5"
     }

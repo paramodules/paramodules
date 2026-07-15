@@ -1,4 +1,9 @@
-import type { CachingConfig, UnknownModule } from "#types/public"
+import type {
+    CachingConfig,
+    RegistryRecord,
+    UnknownModule
+} from "#types/public"
+import { isModule } from "#utils"
 import { assertCachingConfig } from "#validation"
 
 /**
@@ -14,4 +19,35 @@ export function caching<THIS extends UnknownModule>(
 ): THIS {
     assertCachingConfig(this.tm, config)
     return { ...this, _caching: config }
+}
+
+export function buildCacheKey(
+    module: UnknownModule & { _caching: CachingConfig<unknown> },
+    registry: RegistryRecord
+) {
+    const moduleId = (module: UnknownModule) => {
+        return [module.tm, module._mockId, module._version]
+            .filter((part) => part !== undefined)
+            .join(".")
+    }
+
+    const parts = module._team
+        .map((member) => {
+            const registration = registry[member.tm]
+            if (!registration) return undefined
+
+            if (typeof registration === "function") {
+                if (isModule(member)) return moduleId(member)
+                return undefined
+            }
+
+            if (isModule(registration.service)) {
+                return `${moduleId(registration.service)}:${module._caching.serializer(registration.get())}`
+            }
+
+            return `${member.tm}:${module._caching.serializer(registration.get())}`
+        })
+        .filter((part) => part !== undefined)
+
+    return [moduleId(module), ...parts].join("_")
 }

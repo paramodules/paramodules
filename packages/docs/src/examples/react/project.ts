@@ -1,6 +1,6 @@
 import type { Project, ProjectFiles } from "@stackblitz/sdk"
 
-export const reactExampleOpenFile = "src/components/app.tsx"
+export const reactExampleOpenFile = "src/components/App.tsx"
 
 const reactExampleFilePaths = [
     "README.md",
@@ -13,15 +13,18 @@ const reactExampleFilePaths = [
     "vite.config.ts",
     "src/api.ts",
     "src/cache.ts",
-    "src/context.ts",
+    "src/params.ts",
     "src/index.css",
     "src/main.tsx",
-    "src/components/app.tsx",
-    "src/components/comment.tsx",
-    "src/components/feed.tsx",
-    "src/components/post.tsx",
-    "src/components/reply.tsx",
-    "src/components/session.tsx"
+    "src/components/App.tsx",
+    "src/components/Post.tsx",
+    "src/jsx/app.tsx",
+    "src/jsx/comment.tsx",
+    "src/jsx/feed.tsx",
+    "src/jsx/post.tsx",
+    "src/jsx/reply.tsx",
+    "src/jsx/session.tsx",
+    "src/utils.tsx"
 ] as const
 
 async function fetchStaticFile(assetBaseUrl: string, path: string) {
