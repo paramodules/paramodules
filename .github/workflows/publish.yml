@@ -67,25 +67,14 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
-        strategy:
-            matrix:
-                include:
-                    - filter: paramodules
-                      dist_path: packages/core/dist
-                      artifact_name: paramodules-build
-
-                    - filter: "@paramodules/react"
-                      dist_path: packages/react/dist
-                      artifact_name: "@paramodules-react-build"
-
         steps:
             - uses: actions/checkout@v5
             - uses: ./.github/actions/setup
             - uses: ./.github/actions/build-pkg
               with:
-                  filter: ${{ matrix.filter }}
-                  dist_path: ${{ matrix.dist_path }}
-                  artifact_name: ${{ matrix.artifact_name }}
+                  filter: paramodules
+                  dist_path: packages/core/dist
+                  artifact_name: paramodules-build
                   upload_artifact: "true"
 
     publish-pkg:
@@ -98,19 +87,6 @@ jobs:
         permissions:
             contents: read # Required for checkout
             id-token: write # Required for OIDC with npm
-        strategy:
-            matrix:
-                include:
-                    - package: paramodules
-                      artifact_name: "paramodules-build"
-                      artifact_path: packages/core/dist
-                      working_directory: packages/core
-
-                    - package: "@paramodules/react"
-                      artifact_name: "@paramodules-react-build"
-                      artifact_path: packages/react/dist
-                      working_directory: packages/react
-
         steps:
             - uses: actions/checkout@v5
 
@@ -119,11 +95,11 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
                   package-manager-cache: false # intentional: avoid stale cache on publish
 
-            - name: Download ${{ matrix.package }} build artifacts
+            - name: Download paramodules build artifacts
               uses: actions/download-artifact@v5
               with:
-                  name: ${{ matrix.artifact_name }}
-                  path: ${{ matrix.artifact_path }}
+                  name: paramodules-build
+                  path: packages/core/dist
 
             - name: Set workspace package versions
               run: |
@@ -133,15 +109,14 @@ jobs:
 
                   pnpm \
                       --filter paramodules \
-                      --filter "@paramodules/react" \
                       exec npm version "$VERSION" --no-git-tag-version
 
-            - name: Publish ${{ matrix.package }}
-              working-directory: ${{ matrix.working_directory }}
+            - name: Publish paramodules
+              working-directory: packages/core
               env:
                   CHANNEL: ${{ needs.resolve-tag.outputs.channel }}
               run: |
                   FLAGS="--tag $CHANNEL --no-git-checks --provenance"
                   [[ "$CHANNEL" == "dry" ]] && FLAGS="$FLAGS --dry-run"
-                  echo "Publishing ${{ matrix.package }} with: pnpm publish $FLAGS"
+                  echo "Publishing paramodules with: pnpm publish $FLAGS"
                   pnpm publish $FLAGS

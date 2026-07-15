@@ -1,20 +1,17 @@
-import { service, useSupplies } from "@paramodules/react"
-import { $usersPromise } from "@/api"
-import { use } from "react"
-import { $currentPost, $userStateContext } from "@/context"
+import { service } from "paramodules"
+import { $users } from "@/api"
+import { $post, $userState } from "@/params"
+import { memoryCaching } from "@/cache"
+import { startTransition } from "react"
 
-export const $SelectSession = service("SelectSession").module({
-    required: [$usersPromise, $currentPost, $userStateContext],
-    factory: (initSupplies) =>
-        function SelectSession() {
-            const { usersPromise, currentPost, userStateContext } = useSupplies(
-                $SelectSession,
-                initSupplies
-            )
-
-            const users = use(usersPromise)
-            const [userState, setUserState] = userStateContext
-            const user = userState ?? users[0]
+export const $selectSessionJsx = service("selectSessionJsx")
+    .module({
+        required: [$users, $userState],
+        optionals: [$post],
+        factory: async ({ users: usersPromise, post, userState }) => {
+            const users = await usersPromise
+            const [userFromState, setUser] = userState
+            const user = userFromState ?? users[0]
 
             return (
                 <div className="flex flex-col justify-center items-center gap-2">
@@ -26,7 +23,9 @@ export const $SelectSession = service("SelectSession").module({
                             {users.map((u) => (
                                 <button
                                     key={u.id}
-                                    onClick={() => setUserState(u)}
+                                    onClick={() =>
+                                        startTransition(() => setUser(u))
+                                    }
                                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                                         user?.id === u.id ?
                                             "bg-blue-600 text-white"
@@ -38,7 +37,7 @@ export const $SelectSession = service("SelectSession").module({
                             ))}
                         </div>
                     </div>
-                    {currentPost && (
+                    {post && (
                         <p className="text-xs text-gray-500">
                             Silly and pointless session switcher to show context
                             switching
@@ -47,4 +46,5 @@ export const $SelectSession = service("SelectSession").module({
                 </div>
             )
         }
-})
+    })
+    .caching(memoryCaching)

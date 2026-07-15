@@ -1,6 +1,5 @@
-import { service } from "@paramodules/react"
-import { sleep } from "paramodules"
-import { asyncCaching } from "@/cache"
+import { service, sleep } from "paramodules"
+import { lsCaching } from "@/cache"
 
 export const mockUsers = [
     { id: "userA" },
@@ -55,20 +54,20 @@ export type Reply = (typeof mockReplies)[number]
 export type Post = (typeof populatedPosts)[number]
 export type Comment = Post["comments"][number]
 
-export const $usersPromise = service("usersPromise")
+export const $users = service("users")
     .module({
         factory: async () => {
             await sleep(3000)
             return mockUsers
         }
     })
-    .caching(asyncCaching)
+    .caching(lsCaching)
 
-export const $postsPromise = service("postsPromise")
+export const $posts = service("posts")
     .module({
         factory: async () => {
             await sleep(3000)
             return populatedPosts
         }
     })
-    .caching(asyncCaching)
+    .caching(lsCaching)

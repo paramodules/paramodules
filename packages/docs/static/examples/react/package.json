@@ -12,9 +12,8 @@
     },
     "dependencies": {
         "paramodules": "latest",
-        "@paramodules/react": "latest",
-        "@paramodules/sync-cacher": "latest",
-        "@paramodules/async-cacher": "latest",
+        "@paramodules/value-cacher": "latest",
+        "@paramodules/resource-cacher": "latest",
         "clsx": "^2.1.1",
         "date-fns": "^2.30.0",
         "react": "^19.2.3",
@@ -26,7 +25,8 @@
         "@vitejs/plugin-react": "^4.7.0",
         "@tailwindcss/vite": "^4.1.18",
         "tailwindcss": "^4.1.18",
-        "typescript": "^6.0.2",
+        "@typescript/native": "npm:typescript@^7.0.2",
+        "typescript": "npm:@typescript/typescript6@^6.0.2",
         "vite": "^5.4.21"
     },
     "stackblitz": {

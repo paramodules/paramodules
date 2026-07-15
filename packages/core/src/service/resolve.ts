@@ -1,3 +1,4 @@
+import { buildCacheKey } from "#service/caching"
 import type {
     Ctx,
     UnknownService,
@@ -9,7 +10,7 @@ import type {
 import type { MarketPlan, RegistryRecord, SuppliesPlan } from "#types/records"
 import { isModule, once, type Merge } from "#utils"
 
-export function Ctx<
+export function CtxFactory<
     SUPPLIER extends Merge<
         ModuleSupplier<UnknownModule>,
         {
@@ -95,7 +96,7 @@ export function _resolve<THIS extends UnknownModule>(
                 throw new Error(`Dependency ${service.tm} is not available`)
             }
         })
-        const value = this._factory(supplies, Ctx(supplier, this))
+        const value = this._factory(supplies, CtxFactory(supplier, this))
         if (this._warmup) {
             this._warmup(value, supplies)
         }
@@ -120,41 +121,10 @@ export function _resolve<THIS extends UnknownModule>(
         supplies,
         service: this,
         _ctx<SERVICE extends UnknownService>(service: SERVICE) {
-            return Ctx(supplier, this.service)(service)
+            return CtxFactory(supplier, this.service)(service)
         },
         _requested: false as const
     }
 
     return supplier as any
-}
-
-function buildCacheKey(
-    module: UnknownModule & { _caching: CachingConfig<unknown> },
-    registry: RegistryRecord
-) {
-    const moduleId = (module: UnknownModule) => {
-        return [module.tm, module._mockId, module._version]
-            .filter((part) => part !== undefined)
-            .join(".")
-    }
-
-    const parts = module._team
-        .map((member) => {
-            const registration = registry[member.tm]
-            if (!registration) return undefined
-
-            if (typeof registration === "function") {
-                if (isModule(member)) return moduleId(member)
-                return undefined
-            }
-
-            if (isModule(registration.service)) {
-                return `${moduleId(registration.service)}:${module._caching.serializer(registration.get())}`
-            }
-
-            return `${member.tm}:${module._caching.serializer(registration.get())}`
-        })
-        .filter((part) => part !== undefined)
-
-    return [moduleId(module), ...parts].join("_")
 }

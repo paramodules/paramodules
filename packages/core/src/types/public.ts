@@ -192,14 +192,14 @@ export type ModuleSupplier<MODULE extends UnknownModule> = {
     _requested: boolean
 }
 
-export type SpecSupplier<SPEC extends Param> = {
-    service: SPEC
-    get: () => SPEC["_type"]
+export type ParamSupplier<PARAM extends Param> = {
+    service: PARAM
+    get: () => PARAM["_type"]
     _requested: true
 }
 
 export type Supplier<SERVICE extends UnknownService> =
-    SERVICE extends Param ? SpecSupplier<SERVICE>
+    SERVICE extends Param ? ParamSupplier<SERVICE>
     :   ModuleSupplier<Extract<SERVICE, UnknownModule>>
 
 /**
@@ -248,7 +248,7 @@ export type Cacher = <TYPE>(
     cacheKey: string
 ) => () => TYPE
 
-export type AsyncCacher = <TYPE extends Promise<unknown>>(
+export type ResourceCacher = <TYPE extends Promise<unknown>>(
     factoryRunner: () => TYPE,
     cacheKey: string
 ) => () => TYPE
@@ -256,7 +256,7 @@ export type AsyncCacher = <TYPE extends Promise<unknown>>(
 export type Serializer = (value: unknown) => string
 
 export type CachingConfig<TYPE> = {
-    cacher: [TYPE] extends [Promise<unknown>] ? AsyncCacher : Cacher
+    cacher: [TYPE] extends [Promise<unknown>] ? ResourceCacher : Cacher
     serializer: Serializer
 }
 

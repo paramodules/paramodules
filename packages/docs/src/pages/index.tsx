@@ -81,12 +81,12 @@ const $myDrafts = service("myDrafts").module({
     factory: ({ myPosts }) => myPosts.where(eq(posts.status, "draft"))
 })`
 
-const cacheInvalidationCode = `import { create as createSyncCacher } from "@paramodules/sync-cacher"
+const cacheInvalidationCode = `import { create as createValueCacher } from "@paramodules/value-cacher"
 
 const cache = new Map<string, unknown>()
 const serializer = (value: unknown) => JSON.stringify(value)
-const syncCaching = {
-    cacher: createSyncCacher(cache),
+const valueCaching = {
+    cacher: createValueCacher(cache),
     serializer
 }
 
@@ -100,7 +100,7 @@ const $cartProducts = service("cartProducts")
         factory: ({ cart }) =>
             db.products.findManyById(cart.items.map((item) => item.productId))
     })
-    .caching(syncCaching)
+    .caching(valueCaching)
 
 const $checkoutQuote = service("checkoutQuote")
     .module({
@@ -121,7 +121,7 @@ const $checkoutQuote = service("checkoutQuote")
             }
         }
     })
-    .caching(syncCaching)
+    .caching(valueCaching)
 
 const cart = { items: [{ productId: "coffee-mug", quantity: 2 }] }
 
@@ -176,46 +176,37 @@ const dashboard = await $dashboard
     .get()`
 
 const uiMutationCode = `import { useState } from "react"
-    import { ParamsProvider, service, useSupplies } from "@paramodules/react"
-    import { index } from "paramodules"
-    
-    const $count = service("count").param<[number, (n: number) => void]>()
-        .init([0, () => {/* noop */}])
-    
-    const $Button = service("Button").module({
-        required: [$count],
-        factory: (s) => function Button() {
-            const { count } = useSupplies($Button, s)
-            const [n, setN] = count
-            return <button onClick={() => setN(n + 1)}>{n}</button>
-        }
-    })
-    
-    const $Display = service("Display").module({
-        required: [$count],
-        factory: (s) => function Display() {
-            const { count } = useSupplies($Display, s)
-            return <p>Count: {count[0]}</p>
-        }
-    })
-    
-    const $Counter = service("Counter").module({
-        required: [$Button, $Display],
-        factory: (s) => function Counter() {
-            const { Button, Display } = useSupplies($Counter, s)
-            const countState = useState(0)
-    
-            return (
-                <ParamsProvider
-                    for={$Counter}
-                    params={index($count.of(countState))}
-                >
-                    <Button />
-                    <Display />
-                </ParamsProvider>
-            )
-        }
-    })`
+import { index, service } from "paramodules"
+
+const $count = service("count").param<[number, (n: number) => void]>()
+
+const $buttonJsx = service("buttonJsx").module({
+    required: [$count],
+    factory: ({ count }) => {
+        const [n, setN] = count
+        return <button onClick={() => setN(n + 1)}>{n}</button>
+    }
+})
+
+const $displayJsx = service("displayJsx").module({
+    required: [$count],
+    factory: ({ count }) => <p>Count: {count[0]}</p>
+})
+
+const $counterJsx = service("counterJsx").module({
+    required: [$buttonJsx, $displayJsx],
+    factory: ({ buttonJsx, displayJsx }) => (
+        <>
+            {buttonJsx}
+            {displayJsx}
+        </>
+    )
+})
+
+export function Counter() {
+    const countState = useState(0)
+    return $counterJsx.request(index($count.of(countState))).get()
+}`
 
 const agentGraphCode = `const $session = service("session").param<{ userId: string }>()
 
@@ -275,9 +266,9 @@ const cascadeExamples = [
     },
     {
         eyebrow: "UI mutation cascades",
-        title: "Mutations ripple through React Context.",
+        title: "Replaces React Context with a simpler API.",
         description:
-            "No more unwieldy Context Provider nested trees! @paramodules/react is a React Context adapter that lets you use paramodule's dependency graph for Context propagation, leading to a much nicer API and development experience",
+            "No more unwieldy Context Provider nested trees! Paramodules use DI instead of Context to avoid prop-drilling. See the example!.",
         code: uiMutationCode,
         language: "tsx"
     },

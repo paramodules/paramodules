@@ -1,0 +1,178 @@
+---
+title: "paramodules v0.16: React without an adapter"
+slug: paramodules-v0.16-react-without-an-adapter
+authors:
+    - name: Félix Dubé
+      title: "@someone635"
+      url: https://github.com/someone635
+hide_table_of_contents: false
+---
+
+v0.16 removes `@paramodules/react`.
+
+The adapter added React Context, `ParamsProvider`, and `useSupplies` on top of the module graph. In practice, that was a second dependency system for a job core paramodules can already do: pass typed params into a request and carry them through the whole cascade.
+
+React integration is now just ordinary `paramodules`. Stateful React components open request boundaries, modules return JSX, and nested scopes use `ctx(...)`.
+
+{/* truncate */}
+
+## React no longer needs a special adapter
+
+The old adapter turned params into React Context values:
+
+```tsx
+import { ParamsProvider, service, useSupplies } from "@paramodules/react"
+
+const $post = service("post").param<Post>()
+
+function Feed({ posts }: { posts: Post[] }) {
+    return posts.map((post) => (
+        <ParamsProvider
+            key={post.id}
+            for={$postJsx}
+            params={index($post.of(post))}
+        >
+            <Post />
+        </ParamsProvider>
+    ))
+}
+```
+
+That worked, but it duplicated concepts already present in paramodules. Params could enter through `.request(...)`, nested cascades could inherit them through `ctx(...)`, and factories could return JSX without a React-specific `service`.
+
+In v0.16, params come from core:
+
+```tsx
+import { service } from "paramodules"
+
+export const $post = service("post").param<Post>()
+
+export const $userState = service("userState")
+    .param<[User | undefined, (user: User | undefined) => void]>()
+    .init([undefined, () => {}])
+```
+
+Modules can then render JSX directly:
+
+```tsx
+export const $replyJsx = service("replyJsx").module({
+    required: [$post, $userState, $reply],
+    factory: ({ reply, post, userState }) => {
+        const user = userState[0]
+
+        return (
+            <div>
+                Reply {reply.id} on post {post.id} as {user?.id ?? "Guest"}
+            </div>
+        )
+    }
+})
+```
+
+A stateful component supplies React state when it opens a request:
+
+```tsx
+export function App() {
+    const userState = useState<User | undefined>(undefined)
+
+    return $appJsx.request(index($userState.of(userState))).get()
+}
+```
+
+Below that boundary, the module graph carries `$userState` wherever it is required. Intermediate JSX modules do not need providers, hooks, or props added only to forward that value.
+
+For repeated items, `ctx(...)` opens a nested request while inheriting the outer scope:
+
+```tsx
+export const $commentJsx = service("commentJsx").module({
+    required: [$post, $comment],
+    factory: ({ comment }, ctx) => (
+        <div>
+            {comment.replies.map((reply) =>
+                ctx($replyJsx)
+                    .request(index($reply.of(reply)))
+                    .get()
+            )}
+        </div>
+    )
+})
+```
+
+`$replyJsx` receives the new `$reply` param and inherits `$post` and `$userState` from the caller. This is the same nested request model used outside React.
+
+The React example has been rewritten around this pattern. React components own stateful boundaries, paramodule factories own the JSX cascade, and async JSX still works with `Suspense` and `use()`.
+
+## Cachers are named after what they cache
+
+The two cacher packages have also been renamed:
+
+- `@paramodules/sync-cacher` → `@paramodules/value-cacher`
+- `@paramodules/async-cacher` → `@paramodules/resource-cacher`
+
+The old names described whether a factory was synchronous or asynchronous. The new names describe the caching model instead:
+
+- The value cacher stores ordinary values in a `Map`-like cache.
+- The resource cacher wraps `@epic-web/cachified` for promise-returning resources, TTLs, stale values, and other resource-cache behavior.
+
+```tsx
+import { create as createValueCacher } from "@paramodules/value-cacher"
+import { create as createResourceCacher } from "@paramodules/resource-cacher"
+
+const valueCaching = {
+    cacher: createValueCacher(new Map()),
+    serializer: (value: unknown) => JSON.stringify(value)
+}
+
+const resourceCaching = {
+    cacher: createResourceCacher({
+        cache: new Map(),
+        ttl: 60_000
+    }),
+    serializer: (value: unknown) => JSON.stringify(value)
+}
+```
+
+The public `AsyncCacher` type follows the same terminology and is now `ResourceCacher`. `SpecSupplier` has also been renamed to `ParamSupplier` to match the current param vocabulary.
+
+The `.caching(...)` API and cache invalidation cascade are otherwise unchanged.
+
+## Migration guide
+
+### 1. Remove the React adapter
+
+Uninstall `@paramodules/react` and import `service`, `index`, and the rest of the graph API from `paramodules`.
+
+Replace `ParamsProvider` and `useSupplies` boundaries with ordinary `.request(...)` calls. Keep React components where hooks or local state require them, and let modules return JSX for the rest of the cascade.
+
+### 2. Rename cacher packages
+
+Update package names and imports:
+
+```diff
+- import { create } from "@paramodules/sync-cacher"
++ import { create } from "@paramodules/value-cacher"
+
+- import { create } from "@paramodules/async-cacher"
++ import { create } from "@paramodules/resource-cacher"
+```
+
+If you import the public cacher type directly, rename `AsyncCacher` to `ResourceCacher`.
+
+### 3. Rename `SpecSupplier` if used directly
+
+```diff
+- import type { SpecSupplier } from "paramodules"
++ import type { ParamSupplier } from "paramodules"
+```
+
+Most apps rely on inference and will not have this type in application code.
+
+---
+
+- [paramodules on GitHub](https://github.com/paramodules/core)
+- [paramodules on npm](https://www.npmjs.com/package/paramodules)
+- [Full documentation](https://paramodules.github.io/core/)
+
+```bash
+npm install paramodules@latest
+```
