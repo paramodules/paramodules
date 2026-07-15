@@ -1,131 +1,107 @@
 # Paramodules React example
 
-A small social feed wireframe that shows how `paramodules` connects
-paramodules to React. Components are paramodules modules; params like
-`currentPost` and `userState` flow through the tree with `ParamsProvider` instead
-of prop drilling.
+A small social-feed wireframe showing Paramodules working with React 19. The
+React wrappers own interactive state; Paramodule modules compose it with data
+and contextual params to produce JSX.
 
 This project is owned by the docs site and launched with the StackBlitz SDK.
-The files stay editable in the repository, and the docs page sends them to
-StackBlitz as a Vite project.
-
----
+The docs page sends these repository files to StackBlitz as a Vite project.
 
 ## What this demo shows
 
-- **Modules as components** — each UI piece is a `service(...).module({ factory })` that returns a React component.
-- **Context params** — `$currentPost` and `$userState` are declared with `@paramodules/react`'s `service().param()` so they carry a React Context.
-- **`useSupplies`** — each component reads its dependency graph in one call, like typed `useContext` for the whole module.
-- **Subtree scopes** — `Feed` wraps each post in a `ParamsProvider`; `Post` can override `userState` for its own branch.
-- **Async loading** — `$usersPromise` and `$postsPromise` are async modules consumed with React `Suspense` and `use()`.
-- **Memoized async data** — the mock API modules use `memo:` with a localStorage-backed wrapper, so repeat page loads can reuse the paramodules cache key and skip the artificial network delay.
+- **JSX modules** — each `service(...).module(...)` supplies a React node (or
+  a promise for one).
+- **Typed request params** — `$post`, `$comment`, `$reply`, and `$userState`
+  are bound with `index(...service.of(value))` when requesting a module.
+- **Inherited module context** — child requests use `ctx($module)`, so a reply
+  receives its current post and session without `Comment` forwarding props.
+- **Scoped session state** — the app owns a global session state, while each
+  `Post` can override it for its own subtree.
+- **Async loading** — mock user and post modules are consumed through React
+  `Suspense` and the React 19 `use()` API.
+- **Two cache lifetimes** — data promises persist in `localStorage`; JSX
+  promises use an in-memory cache so Suspense can reuse them while the page is
+  open.
 
-Open the app and try switching the session user on a post. Replies deep in the
-tree update without any props passed through `Comment`.
-
----
+Open the app and switch a session inside one post. Its replies update without
+passing session or post props through `Comment`.
 
 ## Project layout
 
 ```text
 src/
-├── context.ts          # Context params ($currentPost, $userState)
-├── api.ts              # Mock data and async loader modules
-├── cache.ts            # localStorage-backed memo wrapper
+├── api.ts                 # Mock social graph and delayed async data modules
+├── cache.ts               # localStorage and in-memory cacher configurations
+├── params.ts              # Typed Paramodule request params
 ├── components/
-│   ├── app.tsx         # Root layout, app-level ParamsProvider
-│   ├── cache-status.tsx # Shows and clears persistent memo entries
-│   ├── feed.tsx        # Lists posts, scopes currentPost per item
-│   ├── post.tsx        # Post card, optional per-post userState override
-│   ├── comment.tsx     # Comment list
-│   ├── reply.tsx       # Reads currentPost + userState from context
-│   └── session.tsx     # Session switcher UI
-├── main.tsx            # Requests $App and mounts the tree
-└── index.css           # Tailwind entry
+│   ├── App.tsx            # Owns the app-level React session state
+│   └── Post.tsx           # Owns a per-post session override
+├── jsx/
+│   ├── app.tsx            # Root layout and Suspense boundaries
+│   ├── feed.tsx           # Loads posts and renders Post wrappers
+│   ├── post.tsx           # Renders a post and requests comment JSX
+│   ├── comment.tsx        # Requests reply JSX with inherited context
+│   ├── reply.tsx          # Displays the contextual post and session
+│   └── session.tsx        # Reusable global/per-post session switcher
+├── main.tsx               # React entry point
+└── utils.tsx              # Promise-to-JSX bridge using React use()
 ```
-
----
 
 ## Suggested reading order
 
-1. **`src/context.ts`** — params that should propagate through React.
-2. **`src/cache.ts`** — a `memo(fn, cacheKey)` wrapper that stores resolved async values in localStorage.
-3. **`src/api.ts`** — async data modules that opt into persistent memoization.
-4. **`src/components/reply.tsx`** — a leaf component that reads context params via `useSupplies`.
-5. **`src/components/feed.tsx`** — `ParamsProvider` scopes `currentPost` per post.
-6. **`src/components/post.tsx`** — nested provider overrides `userState` for one post subtree.
-7. **`src/components/app.tsx`** — root provider and composition of `Feed` + `SelectSession`.
-8. **`src/main.tsx`** — entry point: `$App.request({}).get()`.
-
----
+1. **`src/params.ts`** — the typed values that requests can supply.
+2. **`src/components/App.tsx`** — React state is supplied to `$appJsx`.
+3. **`src/jsx/reply.tsx`** — the leaf consumes `$reply`, `$post`, and
+   `$userState`.
+4. **`src/jsx/comment.tsx`** — `ctx($replyJsx)` supplies a reply while
+   inheriting the post and session context.
+5. **`src/components/Post.tsx`** — a nested React state value overrides the
+   app session for one post.
+6. **`src/cache.ts`** and **`src/api.ts`** — persistent resource caching for
+   mock data and in-memory caching for JSX promises.
 
 ## Key patterns
 
-### Request the root module
+### Bind params while requesting JSX
 
 ```tsx
-const App = $App.request({}).get()
-createRoot(document.getElementById("root")!).render(<App />)
+const jsx = $appJsx.request(index($userState.of(userState))).get()
 ```
 
-No custom bootstrap layer — the root component comes straight from the
-paramodules graph.
+`userState` is a React state tuple held by `App`. It enters the Paramodule graph
+only at this request boundary.
 
-### Read supplies inside a component
+### Inherit context for a child request
 
 ```tsx
-factory: (initSupplies) =>
-    function Reply({ reply }) {
-        const { currentPost, userStateContext } = useSupplies(
-            $Reply,
-            initSupplies
-        )
-        // ...
-    }
+ctx($commentJsx)
+    .request(index($comment.of(comment), $post.of(post)))
+    .get()
 ```
 
-Context params resolve from the nearest `ParamsProvider`. Other dependencies
-resolve from `initSupplies` (the graph paramodules built at request time).
+`ctx()` carries upstream supplies into the child request. The comment is bound
+explicitly, while a deeper reply can inherit the current post and user state.
 
-### Open a param scope for a subtree
+### Suspend on a JSX promise
 
 ```tsx
-<ParamsProvider for={$Post} params={index($currentPost.of(post))}>
-    <Post />
-</ParamsProvider>
+export function AsyncJSX({ jsx }: { jsx: Promise<React.ReactNode> }) {
+    return use(jsx)
+}
 ```
 
-The `for` prop types which params you may supply.
+`$users`, `$posts`, `$selectSessionJsx`, and `$feedJsx` are asynchronous.
+`AsyncJSX` lets the surrounding `Suspense` boundary present a loading state.
 
-### Persist async module results
+### Use cache lifetimes deliberately
 
-```ts
-const apiMemo = localStorageMemo("react-social-feed-v0.14")
+`$users` and `$posts` use a `localStorage`-backed resource cacher, so their
+resolved mock values survive a refresh. `$feedJsx` and `$selectSessionJsx` use
+an in-memory value cacher, which retains their JSX promises only for the
+current page session.
 
-export const $postsPromise = service("postsPromise").module({
-    memo: apiMemo,
-    factory: async () => {
-        await sleep(1000)
-        return populatedPosts
-    }
-})
-```
-
-Paramodules builds a cache key from the memo-enabled module versions and request
-params, then passes it to `memo(fn, cacheKey)`. The example wrapper keeps the
-supplier shape intact and only persists the resolved async value. The "Invalidate
-cache and reload" button clears localStorage, calls `invalidate()` on the
-memo-enabled API modules, and reloads so the root module request is rebuilt with
-fresh keys.
-
-`localStorageMemo` is built with `createSerializableValueMemo`, which can adapt
-any external cache with a `readStorage(cacheKey)` and
-`writeStorage(cacheKey, value)` pair. The serializable-value builder is
-intentionally strict: it throws if a resolved module value is not
-JSON-serializable. That is a storage-adapter rule, not a core paramodules rule.
-In-memory memo wrappers can cache suppliers or opaque values directly.
-
----
+To see the artificial three-second load again, clear this site's local storage
+in browser devtools and refresh.
 
 ## License
 

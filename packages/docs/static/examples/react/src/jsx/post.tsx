@@ -2,7 +2,7 @@ import { $selectSessionJsx } from "@/jsx/session"
 import { $commentJsx } from "@/jsx/comment"
 import { AsyncJSX } from "@/utils"
 import { service } from "paramodules"
-import { Suspense } from "react"
+import { Fragment, Suspense } from "react"
 import { $post, $comment } from "@/params"
 import { index } from "paramodules"
 
@@ -21,13 +21,15 @@ export const $postJsx = service("postJsx").module({
                 </div>
 
                 <div className="space-y-3">
-                    {post?.comments.map((comment) =>
-                        ctx($commentJsx)
-                            .request(
-                                index($comment.of(comment), $post.of(post))
-                            )
-                            .get()
-                    )}
+                    {post?.comments.map((comment) => (
+                        <Fragment key={comment.id}>
+                            {ctx($commentJsx)
+                                .request(
+                                    index($comment.of(comment), $post.of(post))
+                                )
+                                .get()}
+                        </Fragment>
+                    ))}
                 </div>
             </div>
         )

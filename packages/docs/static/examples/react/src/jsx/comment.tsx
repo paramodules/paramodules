@@ -1,6 +1,7 @@
 import { $replyJsx } from "@/jsx/reply"
 import { index, service } from "paramodules"
 import { $comment, $post, $reply } from "@/params"
+import { Fragment } from "react"
 
 export const $commentJsx = service("commentJsx").module({
     required: [$post, $comment],
@@ -13,9 +14,13 @@ export const $commentJsx = service("commentJsx").module({
 
                 <div className="space-y-2">
                     {comment.replies.map((reply) => {
-                        return ctx($replyJsx)
-                            .request(index($reply.of(reply)))
-                            .get()
+                        return (
+                            <Fragment key={reply.id}>
+                                {ctx($replyJsx)
+                                    .request(index($reply.of(reply)))
+                                    .get()}
+                            </Fragment>
+                        )
                     })}
                 </div>
             </div>
