@@ -24,7 +24,7 @@ jobs:
             - uses: ./.github/actions/build-pkg
               with:
                   filter: paramodules
-                  dist_path: packages/react/dist
+                  dist_path: packages/core/dist
 
     build-docs:
         needs: test
