@@ -15,12 +15,3 @@ export const $userState = service("userState")
             /* noop */
         }
     ])
-
-export const $postUserState = service("postUserState")
-    .param<[User | undefined, (user: User | undefined) => void]>()
-    .init([
-        undefined,
-        () => {
-            /* noop */
-        }
-    ])

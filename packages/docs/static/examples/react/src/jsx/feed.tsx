@@ -13,7 +13,7 @@ export const $feedJsx = service("feedJsx")
             return (
                 <div className="space-y-6">
                     {posts.map((post: PostType) => (
-                        <Post post={post} userState={userState} />
+                        <Post key={post.id} post={post} userState={userState} />
                     ))}
                 </div>
             )
