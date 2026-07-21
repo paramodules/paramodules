@@ -43,17 +43,18 @@ export function simpleId() {
 /**
  * Transforms an array of suppliers into a map keyed by service trademarks.
  * This provides type-safe access to suppliers by their service trademarks.
+ * `undefined` entries are ignored and omitted from the result type.
  *
- * @typeParam LIST - An array type where each element has a `service` property with a `tm`
- * @param list - Array of suppliers to index
+ * @typeParam LIST - An array type where each element has a `service` property with a `tm`, or is `undefined`
+ * @param list - Array of suppliers to index (`undefined` entries are filtered out)
  * @returns A map where keys are service trademarks and values are their suppliers
  * @public
  */
-export function index<LIST extends { service: { tm: string } }[]>(
-    ...list: LIST
-) {
+export function index<
+    LIST extends ({ service: { tm: string } } | undefined)[]
+>(...list: LIST) {
     return list.reduce(
-        (acc, r) => ({ ...acc, [r.service.tm]: r }),
+        (acc, r) => (r == null ? acc : { ...acc, [r.service.tm]: r }),
         {}
     ) as MapFromList<LIST>
 }
@@ -61,19 +62,23 @@ export function index<LIST extends { service: { tm: string } }[]>(
 /**
  * Converts an array of objects with name properties into a map where keys are the names.
  * This is used internally to create lookup maps from service arrays for type-safe access.
+ * `undefined` entries in the list are excluded from the resulting map type.
  *
- * @typeParam LIST - An array of objects that have a `name` property
- * @returns A map type where each key is a name from the list and values are the corresponding objects
+ * @typeParam LIST - An array of objects that have a `service.tm` property, or `undefined`
+ * @returns A map type where each key is a trademark from the list and values are the corresponding objects
  * @public
  */
-export type MapFromList<LIST extends { service: { tm: string } }[]> =
-    LIST extends [] ? Record<string, never>
+export type MapFromList<
+    LIST extends ({ service: { tm: string } } | undefined)[]
+> =
+    [Exclude<LIST[number], undefined>] extends [never] ?
+        Record<string, never>
     :   UnionToIntersection<
-            {
-                [K in keyof LIST]: {
-                    [NAME in LIST[K]["service"]["tm"]]: LIST[K]
-                }
-            }[number]
+            Exclude<LIST[number], undefined> extends infer ITEM ?
+                ITEM extends { service: { tm: string } } ?
+                    { [NAME in ITEM["service"]["tm"]]: ITEM }
+                :   never
+            :   never
         >
 
 /**
