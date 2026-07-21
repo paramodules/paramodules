@@ -156,13 +156,28 @@ type SuppliesBase<REQUEST extends Partial<MarketRecord<UnknownService>>> = {
     :   never
 }
 
+/**
+ * Unwrapped values from a request map. Mirrors {@link Market}'s projection of
+ * {@link Request}: optional request keys that are non-inited params become
+ * `T | undefined`; required params, inited required params, and required-module
+ * overrides stay non-nullable.
+ */
 export type Supplies<
-    REQUEST extends Partial<MarketRecord<UnknownService>>,
-    OPTIONAL_KEYS extends string
+    REQUEST extends Partial<MarketRecord<UnknownService>>
 > =
     string extends keyof Required<REQUEST> ? any
     :   {
             [NAME in keyof SuppliesBase<REQUEST>]:
                 | SuppliesBase<REQUEST>[NAME]
-                | (NAME extends OPTIONAL_KEYS ? undefined : never)
+                | (NAME extends keyof REQUEST ?
+                    undefined extends REQUEST[NAME] ?
+                        Required<REQUEST>[NAME] extends Supplier<infer SERVICE> ?
+                            SERVICE extends Param ?
+                                [SERVICE["_init"]] extends [never] ?
+                                    undefined
+                                :   never
+                            :   never
+                        :   never
+                    :   never
+                :   never)
         }

@@ -78,10 +78,7 @@ export function Hire() {
                 HIRED[number]["_reqType"]
             >
         >
-        const _suppliesType = null as unknown as Supplies<
-            typeof _reqType,
-            THIS["_optionalKeys"]
-        >
+        const _suppliesType = null as unknown as Supplies<typeof _reqType>
 
         return {
             ...this,
