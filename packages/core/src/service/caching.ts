@@ -42,7 +42,7 @@ export function buildCacheKey(
             }
 
             if (isModule(registration.service)) {
-                return `${moduleId(registration.service)}:${module._caching.serializer(registration.get())}`
+                return moduleId(registration.service)
             }
 
             return `${member.tm}:${module._caching.serializer(registration.get())}`
