@@ -346,6 +346,66 @@ describe("Optionals Feature", () => {
             const result4 = $parent.request(index($optional.of(55))).get()
             expect(result4).toBe(55)
         })
+
+        it("keeps transitive optionals optional in parent supplies unless listed in required", () => {
+            const $authUser = service("authUser").param<{ id: string }>()
+
+            const $community = service("community").module({
+                optionals: [$authUser],
+                factory: ({ authUser }) => authUser?.id ?? "anon"
+            })
+
+            // Parent depends on a module that has $authUser optional, but does
+            // not redeclare $authUser. The optional must stay optional in the
+            // parent's supplies — it must NOT be promoted to required.
+            const $featured = service("featured").module({
+                required: [$community],
+                factory: ({ community }) => community
+            })
+
+            type FeaturedSupplies = (typeof $featured)["_suppliesType"]
+
+            expectTypeOf<FeaturedSupplies["authUser"]>().toEqualTypeOf<
+                { id: string } | undefined
+            >()
+
+            const supplier = $featured.request({})
+            expectTypeOf(supplier.supplies.authUser).toEqualTypeOf<
+                { id: string } | undefined
+            >()
+
+            // Runtime: optional may be omitted.
+            expect(supplier.get()).toBe("anon")
+            expect(
+                $featured.request(index($authUser.of({ id: "u1" }))).get()
+            ).toBe("u1")
+
+            // Explicitly listing the param in required is what makes it required.
+            const $featuredRequiringAuth = service(
+                "featuredRequiringAuth"
+            ).module({
+                required: [$community, $authUser],
+                factory: ({ community, authUser }) => {
+                    assertType<{ id: string }>(authUser)
+                    return `${community}:${authUser.id}`
+                }
+            })
+
+            type RequiringSupplies =
+                (typeof $featuredRequiringAuth)["_suppliesType"]
+            expectTypeOf<RequiringSupplies["authUser"]>().toEqualTypeOf<{
+                id: string
+            }>()
+
+            // @ts-expect-error - authUser is now explicitly required
+            $featuredRequiringAuth.request({})
+
+            expect(
+                $featuredRequiringAuth
+                    .request(index($authUser.of({ id: "u1" })))
+                    .get()
+            ).toBe("u1:u1")
+        })
     })
 
     describe("Optionals with Mocks", () => {

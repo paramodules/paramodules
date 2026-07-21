@@ -26,7 +26,7 @@
     "scripts": {
         "build": "tsup",
         "watch": "tsup --watch",
-        "test": "vitest",
+        "test": "vitest --typecheck",
         "test:run": "vitest run --typecheck",
         "typecheck": "vitest run --typecheck.only"
     },

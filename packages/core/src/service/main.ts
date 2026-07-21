@@ -68,10 +68,7 @@ export function main<
 
     const _reqType = null as unknown as REQUEST
 
-    const _suppliesType = null as unknown as Supplies<
-        REQUEST,
-        OPTIONALS[number]["tm"]
-    >
+    const _suppliesType = null as unknown as Supplies<REQUEST>
 
     return {
         ...param<TM, TYPE>(tm),

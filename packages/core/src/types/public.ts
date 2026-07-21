@@ -111,9 +111,9 @@ export interface Module<
     _optionalKeys: OPTIONAL_KEYS
     _caller: CALLER
     _reqType: REQUEST
-    _suppliesType: Supplies<REQUEST, OPTIONAL_KEYS>
+    _suppliesType: Supplies<REQUEST>
     _oldReqType: REQUEST
-    _oldSuppliesType: Supplies<REQUEST, OPTIONAL_KEYS>
+    _oldSuppliesType: Supplies<REQUEST>
     /** Array of services this service depends on */
     _required: OriginalService[]
     /** Array of optional request services this service may depend on */
