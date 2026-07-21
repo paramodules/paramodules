@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { service } from "#index"
+import { index, service } from "#index"
 import { dummyValueCacher, dummyResourceCacher } from "./helpers/dummy-cachers"
 
 const serializer = (value: unknown) => JSON.stringify(value)
@@ -23,6 +23,72 @@ describe("caching", () => {
         expect(() => $module.invalidate()).toThrow(
             'Cannot invalidate "uncached" because invalidate() only applies to cached modules.'
         )
+    })
+
+    describe("cache keys", () => {
+        it("serializes param dependency values into the cache key", () => {
+            const $id = service("id").param<string>()
+            const factory = vi.fn(({ id }: { id: string }) => ({
+                id,
+                token: Symbol("byId")
+            }))
+
+            const $cached = service("byId")
+                .module({
+                    required: [$id],
+                    factory
+                })
+                .caching(valueCaching)
+
+            const firstA = $cached.request(index($id.of("a"))).get()
+            const secondA = $cached.request(index($id.of("a"))).get()
+            const firstB = $cached.request(index($id.of("b"))).get()
+
+            expect(secondA).toBe(firstA)
+            expect(firstB).not.toBe(firstA)
+            expect(factory).toHaveBeenCalledTimes(2)
+        })
+
+        it("keys module deps by identity, not by serializing their values", () => {
+            const serializer = vi.fn((value: unknown) => JSON.stringify(value))
+            const caching = {
+                cacher: dummyValueCacher(),
+                serializer
+            }
+
+            const handle: { self?: unknown } = {}
+            handle.self = handle
+
+            const $db = service("db").module({
+                factory: () => handle
+            })
+
+            const factory = vi.fn(({ db }: { db: typeof handle }) => ({
+                db,
+                token: Symbol("cachedWithDb")
+            }))
+
+            const $cached = service("cachedWithDb")
+                .module({
+                    required: [$db],
+                    factory
+                })
+                .caching(caching)
+
+            // Nested request preserves the resolved $db supplier on the caller
+            // market — the path that used to JSON.stringify module get() values.
+            const $parent = service("parentWithDb").module({
+                required: [$db],
+                factory: (_supplies, ctx) => ctx($cached).request({}).get()
+            })
+
+            const first = $parent.request({}).get()
+            const second = $parent.request({}).get()
+
+            expect(second).toBe(first)
+            expect(factory).toHaveBeenCalledTimes(1)
+            expect(serializer).not.toHaveBeenCalled()
+        })
     })
 
     describe("value", () => {
