@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, expectTypeOf } from "vitest"
 import { service } from "#index"
 import { index, once, sleep } from "#utils"
 
@@ -508,6 +508,56 @@ describe("services", () => {
 
             const emptySupplier = $empty.request({})
             expect(emptySupplier.get()).toBe("empty")
+        })
+    })
+
+    describe("index", () => {
+        it("filters undefined entries out of the keyed map", () => {
+            const $config = service("config").param<string>()
+            const $optional = service("optional").param<number>()
+
+            const config = $config.of("test")
+            const optional = $optional.of(42)
+
+            const mapped = index(config, undefined, optional)
+
+            expect(mapped).toEqual({ config, optional })
+            expectTypeOf(mapped.config).toEqualTypeOf(config)
+            expectTypeOf(mapped.optional).toEqualTypeOf(optional)
+            expectTypeOf<keyof typeof mapped>().toEqualTypeOf<
+                "config" | "optional"
+            >()
+
+            const empty = index(undefined, undefined)
+            expect(empty).toEqual({})
+            expectTypeOf(empty).toEqualTypeOf<Record<string, never>>()
+        })
+
+        it("lets callers pass conditional undefined suppliers into request()", () => {
+            const $config = service("config").param<string>()
+            const $optional = service("optional").param<number>()
+
+            const $module = service("module").module({
+                required: [$config],
+                optionals: [$optional],
+                factory: ({ config, optional }) =>
+                    `${config}:${optional ?? "none"}`
+            })
+
+            expect(
+                $module.request(index($config.of("test"), undefined)).get()
+            ).toBe("test:none")
+
+            expect(
+                $module
+                    .request(
+                        index(
+                            $config.of("test"),
+                            true ? $optional.of(7) : undefined
+                        )
+                    )
+                    .get()
+            ).toBe("test:7")
         })
     })
 })
