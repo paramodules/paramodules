@@ -102,6 +102,12 @@ export function isModule<MODULE extends UnknownModule>(
     return "_module" in service && service._module === true
 }
 
+export function isInterface<PORT extends { _interface: true }>(
+    service: PORT | Pick<UnknownService, "tm">
+): service is PORT {
+    return "_interface" in service && service._interface === true
+}
+
 export function isModuleSupplier<SUPPLIER extends Supplier<UnknownService>>(
     supplier: SUPPLIER
 ): supplier is Extract<SUPPLIER, ModuleSupplier<UnknownModule>> {

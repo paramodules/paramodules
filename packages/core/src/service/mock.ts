@@ -50,7 +50,7 @@ export function Mock() {
             ...mock,
             hired: [] as [],
             _mock: true as const,
-            _mockId: simpleId(),
+            _implementId: simpleId(),
             _oldReqType: this._reqType,
             _oldSuppliesType: this._suppliesType
         } satisfies MockType<THIS, TYPE2, REQUIRED2, OPTIONALS2> as any

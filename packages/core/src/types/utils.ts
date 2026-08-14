@@ -22,3 +22,13 @@ export type MergeStringTuples<
     OLD extends readonly string[],
     WITH extends readonly string[]
 > = MergeTuplesBy<"self", OLD, WITH>
+
+export type ExcludeFromTuple<
+    T extends string[],
+    U,
+    ACC extends string[] = []
+> =
+    T extends [infer H extends string, ...infer R extends string[]] ?
+        H extends U ? ExcludeFromTuple<R, U, ACC>
+        :   ExcludeFromTuple<R, U, [...ACC, H]>
+    :   ACC

@@ -365,6 +365,7 @@ describe("Optionals Feature", () => {
 
             type FeaturedSupplies = (typeof $featured)["_suppliesType"]
 
+            expectTypeOf<FeaturedSupplies["community"]>().toEqualTypeOf<string>()
             expectTypeOf<FeaturedSupplies["authUser"]>().toEqualTypeOf<
                 { id: string } | undefined
             >()

@@ -36,6 +36,27 @@ export interface Param<
     _init: INIT
 }
 
+/**
+ * A port: trademark + value type, no factory. Fill it with `.of(value)` like a
+ * param, or `.implement(...)` then `hire` the implement at the entry-point.
+ */
+export interface Interface<NAME extends string = string, TYPE = unknown>
+    extends Service<NAME, TYPE> {
+    implement: <
+        THIS extends Interface<NAME, TYPE>,
+        TYPE2 extends THIS["_type"],
+        REQUIRED2 extends OriginalService[] = [],
+        OPTIONALS2 extends Param[] = []
+    >(
+        this: THIS,
+        plan: ModulePlanGuard<THIS["tm"], TYPE2, REQUIRED2, OPTIONALS2>
+    ) => Implement<THIS, TYPE2, REQUIRED2, OPTIONALS2>
+    _interface: true
+    _param: false
+    _module: false
+    _mock: false
+}
+
 export type PartialModulePlan<
     TYPE,
     REQUIRED extends OriginalService[] = [],
@@ -46,6 +67,34 @@ export type PartialModulePlan<
     factory: Factory<TYPE, REQUIRED, OPTIONALS>
     warmup?: Warmup<TYPE, REQUIRED, OPTIONALS>
 }
+
+type OptionalRequestKeys<REQ> = {
+    [K in keyof REQ]-?: undefined extends REQ[K] ? K : never
+}[keyof REQ]
+
+/**
+ * Request shape after `hire()`. Parent-optional keys (including `ctx` omissions)
+ * stay optional; hired trademarks drop; remaining hired deps merge in.
+ */
+export type AfterHireRequest<
+    THIS extends { _reqType: object; _oldReqType?: object },
+    HIRED extends UnknownModule[]
+> = Merge<
+    {
+        [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
+    },
+    Merge<
+        HIRED[number]["_reqType"],
+        Omit<
+            THIS["_reqType"],
+            | HIRED[number]["tm"]
+            | Exclude<
+                  keyof HIRED[number]["_oldReqType"],
+                  OptionalRequestKeys<THIS["_reqType"]>
+              >
+        >
+    >
+>
 
 export interface Module<
     NAME extends string,
@@ -88,15 +137,7 @@ export interface Module<
         THIS["_type"],
         THIS["_optionalKeys"],
         THIS["_caller"],
-        Merge<
-            {
-                [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
-            },
-            Merge<
-                Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
-                HIRED[number]["_reqType"]
-            >
-        >,
+        AfterHireRequest<THIS, HIRED>,
         MergeStringTuples<
             THIS["_hired"],
             {
@@ -107,6 +148,7 @@ export interface Module<
     >
     _module: true
     _param: false
+    _interface: false
     _type: TYPE
     _optionalKeys: OPTIONAL_KEYS
     _caller: CALLER
@@ -126,7 +168,8 @@ export interface Module<
     _warmup?: (value: any, deps: any) => void
     _caching?: CachingConfig<TYPE>
     _version: number
-    _mockId?: string
+    _implement?: boolean
+    _implementId?: string
     _resolve: <THIS extends UnknownModule>(
         this: THIS,
         lazyMarket: RegistryRecord
@@ -134,7 +177,7 @@ export interface Module<
     _mock: MOCK
 }
 
-export type UnknownService = UnknownModule | Param
+export type UnknownService = UnknownModule | Param | Interface
 export type OriginalService = UnknownService & {
     _mock: false
 }
@@ -170,9 +213,30 @@ export type Mock<
     "_mock" | "_oldReqType" | "_oldSuppliesType"
 > & {
     _mock: true
-    _mockId: string
+    _implementId: string
     _oldReqType: MODULE["_reqType"]
     _oldSuppliesType: MODULE["_suppliesType"]
+}
+
+export type Implement<
+    PORT extends Interface,
+    TYPE2 extends PORT["_type"],
+    REQUIRED2 extends OriginalService[] = [],
+    OPTIONALS2 extends Param[] = []
+> = Module<
+    PORT["tm"],
+    TYPE2,
+    OPTIONALS2[number]["tm"],
+    undefined,
+    Request<{
+        required: REQUIRED2
+        optionals: OPTIONALS2
+    }>,
+    [],
+    false
+> & {
+    _implement: true
+    _implementId: string
 }
 
 /**
@@ -198,9 +262,16 @@ export type ParamSupplier<PARAM extends Param> = {
     _requested: true
 }
 
+export type InterfaceSupplier<PORT extends Interface> = {
+    service: PORT
+    get: () => PORT["_type"]
+    _requested: true
+}
+
 export type Supplier<SERVICE extends UnknownService> =
     SERVICE extends Param ? ParamSupplier<SERVICE>
-    :   ModuleSupplier<Extract<SERVICE, UnknownModule>>
+    : SERVICE extends Interface ? InterfaceSupplier<SERVICE>
+    : ModuleSupplier<Extract<SERVICE, UnknownModule>>
 
 /**
  * ctx transforms modules into contextualized modules that can be called again with new specs.
@@ -241,7 +312,7 @@ export type Ctx<
                 >
         }
     >
-:   SERVICE & Param // simply returns the service itself if it's a request service (noop)
+:   SERVICE
 
 export type Cacher = <TYPE>(
     factoryRunner: () => TYPE,
