@@ -1,0 +1,75 @@
+---
+title: "paramodules v0.17: interfaces"
+slug: paramodules-v0.17-interfaces
+authors:
+    - name: Félix Dubé
+      title: "@someone635"
+      url: https://github.com/someone635
+hide_table_of_contents: false
+---
+
+Version 0.17 adds **interfaces**.
+
+An interface lets a shared package use a value that the app package creates. The shared package does not import the app.
+
+{/* truncate */}
+
+## The problem
+
+A shared package can own a cascade. That cascade can need a value that only the app can load. Example: a greeting module needs the current user. The app loads the user from the database.
+
+If the shared package imports the app, you create a cycle. The shared package must not import the app.
+
+## An interface has no factory
+
+An interface is a trademark and a value type. It has no factory.
+
+```ts
+const $userInterface = service("user").interface<{
+    id: string
+    name: string
+} | null>()
+
+const $greeting = service("greeting").module({
+    required: [$userInterface],
+    factory: ({ user }) => {
+        if (!user) return "Hello"
+        return `Hello, ${user.name}`
+    }
+})
+```
+
+`$greeting` can live in a shared package. It does not import the app.
+
+## Fill the interface
+
+The app package makes an **implement**. The implement uses the same trademark. Dependents keep `required: [$userInterface]`. They require the interface. They do not import the implement.
+
+You **hire** the implement at the request entry-point. You can also stamp a value with `.of(...)`.
+
+```ts
+const $userFromDb = $user.implement({
+    required: [$userId, $db],
+    factory: async ({ userId, db }) => db.users.findById(userId)
+})
+
+$app.hire($userFromDb).request(index($userId.of(id))).get()
+
+$app.request(index($user.of(row))).get()
+```
+
+If a required interface is not filled, it shows as a missing `.request()` property. This matches a required param. `.request()` throws if the interface is still open.
+
+## Interface, param, and mock
+
+A **param** is a request-time input. You fill it with `.of(...)`.
+
+A **module** has a factory. You replace it with `.mock(...)` and `hire`.
+
+An **interface** is an open dependency in the cascade. You fill it with `.implement(...)` and `hire`, or with `.of(...)`.
+
+At the entry-point, an interface can look like a param: both show up as a missing `.request()` property, and both accept `.of(...)`. Caching is not the same. A param — and an interface filled with `.of(...)` — goes into the cache key as a serialized value. A hired implement goes in as that implement's identity. The cache does not call the implement's getter. If the port's value is a getter, hire an implement. Do not `.of(getter)`.
+
+Use an interface when a shared package needs a concept that the app owns. Use a param when you pass a request-time value that is not that concept.
+
+See the [interfaces section in the README](https://www.npmjs.com/package/paramodules) for the full API.

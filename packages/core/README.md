@@ -27,7 +27,7 @@ const message = $greeting.request(index($session.of({ userId: "ada" }))).get()
 
 Declare params, compose modules, request a module with concrete inputs. That's it
 
-Only params need to be provided at the request entry-point, and Typescript will tell you exactly what you need to provide. All transitive modules are auto-wired. In the chain above, only $session needs to be provided to .request().
+Only params need to be provided at the request entry-point, and Typescript will tell you exactly what you need to provide. All transitive modules are auto-wired. In the chain above, only $session needs to be provided to .request(). Interfaces are the exception: they have no factory, so the entry-point must `hire` an implement.
 
 ---
 
@@ -347,17 +347,20 @@ const $myDrafts = service("myDrafts").module({
 | `service(tm)`         | Declare a named identity. `tm` is the runtime-validated graph key (trademark).            |
 | `.param<T>()`         | A typed runtime input supplied at the request entry point.                                |
 | `.init(value)`        | Give a param a default value so it can be omitted from `request(...)`.                    |
+| `.interface<T>()`     | A port: trademark + type, no factory. Dependents `required` it; entry-points `hire` an implement. |
+| `.implement({ ... })` | A module that fills an interface. Same trademark, constrained value type.                 |
 | `.module({ ... })`    | A graph node: a value derived from params and other modules.                              |
 | `required`            | Dependencies that must be available to the factory.                                       |
 | `optionals`           | Params a module can use if supplied; factories see them as `T \| undefined`.              |
 | `factory`             | The function that produces the module value from inferred supplies and `ctx`.             |
 | `warmup`              | Optional hook invoked after the factory returns, useful for eager warming of lazy values. |
 | `.caching(config)`    | Enable cross-request caching after `.module(...)`.                                        |
-| `.of(value)`          | Stamp a concrete value onto a param or module, producing a supplier.                      |
+| `.of(value)`          | Stamp a concrete value onto a param, interface, or module, producing a supplier.          |
 | `.request(...)`       | Resolve a module for one set of supplied inputs.                                          |
 | `.provision()`        | Pre-resolve graph parts that do not depend on open request-time params.                   |
 | `.invalidate()`       | Bump a cached module's version so it and downstream cached modules recompute.             |
 | `.mock()` + `.hire()` | Replace part of a cascade without changing downstream call sites.                         |
+| `.implement()` + `.hire()` | Fill an interface port at the entry-point. Remaining ports still show up as missing `.request()` properties. |
 | `ctx(...)`            | Create a nested request scope from inside a factory.                                      |
 | `index(...)`          | Key suppliers by trademark for the object shape `.request(...)` expects.                  |
 | `supplier.get()`      | Read the requested module's value.                                                        |
@@ -649,10 +652,10 @@ const res6 = $profileSummary
     .hire($mockProfile)
     .request(index($session.of({ userId: "bob" })))
     .get()
-const isCached5 = res5 === res6 // false, because the hired mock has its own _mockId
+const isCached5 = res5 === res6 // false, because the hired mock has its own _implementId
 ```
 
-The cache key is built from the cached module identity and its cascade: the current module trademark, its version, mock identity when present, transitive module versions, and serialized params. That means different request params get different cache entries, and invalidating an upstream cached module changes the cache key for downstream cached modules.
+The cache key is built from the cached module identity and its cascade: the current module trademark, its version, implement identity when present (implements and mocks), transitive module versions, and serialized params. Interface ports contribute the hired implement's identity (`tm` + implement id + `_version`) — the key builder does not call getters. That means different request params get different cache entries, invalidating an upstream cached module changes the cache key for downstream cached modules, and two implements of the same interface do not share an entry.
 
 For promise-returning factories, use `@paramodules/resource-cacher`, which wraps `@epic-web/cachified`.
 
@@ -767,6 +770,47 @@ const profile = $profile.hire($userMock).request({}).get()
 
 `.hire(...)` returns a new module with mocks merged into its graph. A mock may have a smaller, larger, or different dependency shape than the module it replaces. The request type updates accordingly.
 
+### Interfaces (dependency inversion)
+
+An **interface** is a port: a trademark and a value type, with no factory. Use it when a leaf package owns modules that need a concept implemented upstream (for example shared bidding modules that need the current edition, which next loads from the route). Shared cannot import next — that would be a cycle — so it `required`s the interface, and the entry-point fills the port with `.of(...)` or `hire`s next's implement.
+
+```ts
+// shared — port + modules that depend on it
+const $edition = service("edition").interface<{
+    start: string
+    end: string
+} | null>()
+
+const $remaining = service("remaining").module({
+    required: [$edition, $now],
+    factory: ({ edition, now }) => {
+        if (!edition) return 0
+        const start = new Date(edition.start).getTime()
+        const end = new Date(edition.end).getTime()
+        const t = new Date(now()).getTime()
+        return (end - t) / (end - start)
+    }
+})
+
+// next — real module, same trademark
+const $editionFromRoute = $edition.implement({
+    required: [$editionId, $db],
+    factory: async ({ editionId, db }) =>
+        db.editions.findById(editionId)
+})
+
+// libraries required: [$edition]  // the shared interface, never next's module by import path
+// entry-point — hire the implement, or stamp a value:
+$page.hire($editionFromRoute).request(index($editionId.of(id))).get()
+$page.request(index($edition.of(row))).get()
+```
+
+`.implement(...)` returns a module. Hire it at the entry-point like a mock; remaining open ports still appear as missing `.request()` properties (the same as required params). Nested `ctx(...).request(...)` only omits keys the parent already has — a new context may still need `.of(...)` or `hire(...)`. `.request()` throws at runtime if a port is still open.
+
+Interfaces can also be stamped with `.of(value)`, the same as params. Stamp the interface you `required`, or `hire` an implement — not a param or module of the same trademark. Cached modules that depend on a **hired** implement key by that implement (`tm` + implement id + `_version`). A `.of(...)` stamp keys like a param (`serializer(value)`). Do not put a getter in a cache key — hire an implement when the port's value is a getter.
+
+---
+
 ## Factory Lifecycle
 
 Each factory runs at most once per request snapshot. A shared dependency used by many downstream modules is computed once and then reused. Thus, factories should be pure and not perform any side-effects. If you need to run side-effects, just return a function from the factory:
@@ -835,6 +879,25 @@ const $region = service("region").param<"us" | "eu">().init("us")
 ```
 
 Sets a default value for a param. Modules that require an initialized param can be requested without supplying it, while callers may still override it with `.of(...)`.
+
+### `.interface<T>()`
+
+```ts
+const $edition = service("edition").interface<Edition | null>()
+```
+
+Declares a port. Dependents list it in `required`. Fill it with `.implement(...)` and `hire` the implement at the entry-point.
+
+### `.implement({ required?, optionals?, factory, warmup? })`
+
+```ts
+const $editionFromRoute = $edition.implement({
+    required: [$editionId, $db],
+    factory: async ({ editionId, db }) => db.editions.findById(editionId)
+})
+```
+
+Creates a module with the interface's trademark. The factory's return type must extend the interface type.
 
 ### `.module({ required?, optionals?, factory, warmup? })`
 
@@ -925,7 +988,7 @@ Creates a replacement module with the same trademark and a compatible value type
 const profile = $profile.hire($userMock).request({}).get()
 ```
 
-Returns a new module with mocks merged into its dependency tree. Hired modules override matching trademarks.
+Returns a new module with mocks merged into its dependency tree. Hired modules override matching trademarks. If the graph `required`s an interface, `hire()` type-errors until an implement of that trademark is included.
 
 ### `ctx(service)`
 

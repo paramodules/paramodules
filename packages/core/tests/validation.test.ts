@@ -11,6 +11,12 @@ describe("Runtime Validation", () => {
             expect(supplier.get()).toBe("test")
         })
 
+        it("should create interfaces as ports without factories", () => {
+            const $edition = service("edition").interface<{ id: string }>()
+            expect($edition.tm).toBe("edition")
+            expect($edition._interface).toBe(true)
+        })
+
         it("should enforce runtime module plan validation", () => {
             expect(() => service("test").module({} as any)).toThrow(TypeError)
             expect(() => service("test").module({} as any)).toThrow(

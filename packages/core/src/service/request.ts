@@ -5,7 +5,13 @@ import type {
     UnknownModule
 } from "#types/public"
 import type { MarketRecord, RegistryRecord } from "#types/records"
-import { wasRequested, isModule, isModuleSupplier, once } from "#utils"
+import {
+    wasRequested,
+    isInterface,
+    isModule,
+    isModuleSupplier,
+    once
+} from "#utils"
 import { assertPlainObject } from "#validation"
 
 export function request<THIS extends UnknownModule>(
@@ -59,6 +65,11 @@ export function request<THIS extends UnknownModule>(
         if (isModule(service)) {
             registry[service.tm] = once(() => service._resolve(registry))
             continue
+        }
+        if (isInterface(service)) {
+            throw new Error(
+                `Missing "${service.tm}". Pass .of(...) or hire an implement.`
+            )
         }
         registry[service.tm] = service.of(service._init)
     }

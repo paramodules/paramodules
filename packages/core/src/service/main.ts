@@ -1,8 +1,8 @@
-import type { PartialModulePlan, Supplier } from "#types/public"
+import { caching } from "#service/caching"
 import { request, provision } from "#service/request"
 import { _resolve } from "#service/resolve"
 import type { Supplies, Request } from "#types/records"
-import { dedupe, isModule } from "#utils"
+import type { PartialModulePlan, Supplier } from "#types/public"
 import type {
     Module,
     OriginalService,
@@ -10,7 +10,7 @@ import type {
     UnknownService
 } from "#types/public"
 import { assertTM } from "#validation"
-import { caching } from "#service/caching"
+import { dedupe, isModule } from "#utils"
 
 export function param<TM extends string, TYPE = any>(
     tm: TM
@@ -86,6 +86,7 @@ export function main<
         _version: 0,
         _param: false as const,
         _module: true as const,
+        _interface: false as const,
         _type: null as unknown as TYPE,
         _caller: undefined,
         _optionalKeys: null as unknown as OPTIONALS[number]["tm"],

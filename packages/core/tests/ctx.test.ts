@@ -266,7 +266,7 @@ describe("Context Propagation", () => {
             }
         })
 
-        $main.request(index($number.of(20))).get()
+        $main.request({}).get()
         expect(timesCalled).toEqual(1)
     })
 

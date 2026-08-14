@@ -4,7 +4,8 @@ import type {
     UnknownService,
     Param,
     Module,
-    UnknownModule
+    UnknownModule,
+    Interface
 } from "#types/public"
 import type { UnionToIntersection } from "#utils"
 
@@ -58,6 +59,11 @@ type RequestBase<
         SERVICE["tm"]
     :   never]: Supplier<SERVICE>
 } & {
+    [SERVICE in Extract<
+        PLAN["required"][number],
+        Interface
+    > as SERVICE["tm"]]: Supplier<SERVICE>
+} & {
     [SERVICE in Extract<PLAN["required"][number], Param> as [
         SERVICE["_init"]
     ] extends [never] ?
@@ -68,8 +74,9 @@ type RequestBase<
         | PLAN["optionals"][number]
         | Exclude<
               PLAN["required"][number],
-              Param
-          > as OPTIONAL["tm"]]?: OPTIONAL extends Param ? Supplier<OPTIONAL>
+              Param | Interface
+          > as OPTIONAL["tm"]]?: OPTIONAL extends Param ?
+        Supplier<OPTIONAL>
     : OPTIONAL extends UnknownModule ?
         Supplier<
             Module<

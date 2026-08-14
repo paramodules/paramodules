@@ -26,7 +26,11 @@ export function buildCacheKey(
     registry: RegistryRecord
 ) {
     const moduleId = (module: UnknownModule) => {
-        return [module.tm, module._mockId, module._version]
+        return [
+            module.tm,
+            module._implementId,
+            module._version
+        ]
             .filter((part) => part !== undefined)
             .join(".")
     }
@@ -36,16 +40,16 @@ export function buildCacheKey(
             const registration = registry[member.tm]
             if (!registration) return undefined
 
-            if (typeof registration === "function") {
-                if (isModule(member)) return moduleId(member)
-                return undefined
-            }
+            const supplier =
+                typeof registration === "function" ?
+                    registration()
+                :   registration
 
-            if (isModule(registration.service)) {
-                return moduleId(registration.service)
-            }
+            if (isModule(supplier.service)) return moduleId(supplier.service)
 
-            return `${member.tm}:${module._caching.serializer(registration.get())}`
+            if (typeof registration === "function") return undefined
+
+            return `${member.tm}:${module._caching.serializer(supplier.get())}`
         })
         .filter((part) => part !== undefined)
 

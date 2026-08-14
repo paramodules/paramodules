@@ -5,7 +5,6 @@ import type {
     UnknownModule,
     UnknownService
 } from "#types/public"
-
 type FindDuplicateTrademark<
     SERVICES extends UnknownService[],
     SEEN extends string[] = []
@@ -66,7 +65,7 @@ export type CircularModuleError = {
 }
 
 /**
- * Valid plan argument for `module()` / `mock()`. Invalid plans become error types.
+ * Valid plan argument for `module()` / `mock()` / `implement()`. Invalid plans become error types.
  * @public
  */
 export type ModulePlanGuard<

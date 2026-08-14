@@ -1,7 +1,8 @@
 import { Hire } from "#service/hire"
+import { Implement } from "#service/implement"
 import { main, param } from "#service/main"
 import { Mock } from "#service/mock"
-import { type PartialModulePlan } from "#types/public"
+import { type Interface, type PartialModulePlan } from "#types/public"
 import type { ModulePlanGuard } from "#types/guards"
 import type { Request } from "#types/records"
 import { assertTM, assertModulePlan } from "#validation"
@@ -12,6 +13,27 @@ export function service<TM extends string>(tm: TM) {
         param<TYPE = any>(): Param<TM, TYPE, never> {
             assertTM(tm)
             return param<TM, TYPE>(tm)
+        },
+        /**
+         * Declares a port: a trademark and value type with no factory.
+         * Dependents `required` the interface. Fill it with `.of(value)`
+         * or `hire` an `.implement(...)` of the same trademark.
+         *
+         * @public
+         */
+        interface<TYPE = any>(): Interface<TM, TYPE> {
+            assertTM(tm)
+            const { of } = param<TM, TYPE>(tm)
+            return {
+                tm,
+                of,
+                implement: Implement(),
+                _type: null as unknown as TYPE,
+                _interface: true as const,
+                _param: false as const,
+                _module: false as const,
+                _mock: false as const
+            }
         },
         /**
          * Creates a module that can assemble complex objects from dependencies.

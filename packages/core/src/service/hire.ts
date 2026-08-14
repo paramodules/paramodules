@@ -1,10 +1,8 @@
 import { team } from "#service/main"
 import type { HiredGuard } from "#types/guards"
-import type { Module, UnknownModule } from "#types/public"
-import type { Supplier } from "#types/public"
+import type { AfterHireRequest, Module, UnknownModule } from "#types/public"
 import type { Supplies } from "#types/records"
 import type { MergeStringTuples } from "#types/utils"
-import type { Merge } from "#utils"
 import { assertModules } from "#validation"
 
 /**
@@ -31,15 +29,7 @@ export function Hire() {
         THIS["_type"],
         THIS["_optionalKeys"],
         THIS["_caller"],
-        Merge<
-            {
-                [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
-            },
-            Merge<
-                Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
-                HIRED[number]["_reqType"]
-            >
-        >,
+        AfterHireRequest<THIS, HIRED>,
         MergeStringTuples<
             THIS["_hired"],
             {
@@ -69,15 +59,7 @@ export function Hire() {
             }
         >
 
-        const _reqType = null as unknown as Merge<
-            {
-                [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
-            },
-            Merge<
-                Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
-                HIRED[number]["_reqType"]
-            >
-        >
+        const _reqType = null as unknown as AfterHireRequest<THIS, HIRED>
         const _suppliesType = null as unknown as Supplies<typeof _reqType>
 
         return {
@@ -104,15 +86,7 @@ export function Hire() {
             THIS["_type"],
             THIS["_optionalKeys"],
             THIS["_caller"],
-            Merge<
-                {
-                    [SERVICE in HIRED[number] as SERVICE["tm"]]?: Supplier<SERVICE>
-                },
-                Merge<
-                    Omit<THIS["_reqType"], keyof HIRED[number]["_oldReqType"]>,
-                    HIRED[number]["_reqType"]
-                >
-            >,
+            AfterHireRequest<THIS, HIRED>,
             MergeStringTuples<
                 THIS["_hired"],
                 {
