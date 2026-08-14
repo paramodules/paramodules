@@ -31,6 +31,9 @@ export function once<F extends () => any>(fn: F): F {
 export function dedupe(services: UnknownService[]) {
     const deduped: Record<string, UnknownService> = {}
     for (const service of services) {
+        const existing = deduped[service.tm]
+        // A module fills a port; a later transitive interface must not reopen it.
+        if (existing && isModule(existing) && isInterface(service)) continue
         deduped[service.tm] = service
     }
     return Object.values(deduped)
