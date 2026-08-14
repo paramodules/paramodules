@@ -35,6 +35,34 @@ describe("interfaces", () => {
         expect($title.hire($fromDb).request({}).get()).toBe("daily-today")
     })
 
+    it("keeps a hired implement when a later hire re-lists the interface in its team", () => {
+        const $edition = service("edition").interface<{ id: string }>()
+
+        const $title = service("title").module({
+            required: [$edition],
+            factory: ({ edition }) => edition.id
+        })
+
+        const $fromDb = $edition.implement({
+            factory: () => ({ id: "daily-today" })
+        })
+
+        // Same shape as hiring `$currentBid` after `$rangeCursor`: the second
+        // hire's transitive `_team` still contains the open port.
+        const $spotBids = service("spotBids").module({
+            required: [$edition],
+            factory: ({ edition }) => [edition.id]
+        })
+        const $currentBid = service("currentBid").module({
+            required: [$spotBids],
+            factory: ({ spotBids }) => spotBids[0]
+        })
+
+        expect(
+            $title.hire($fromDb, $currentBid).request({}).get()
+        ).toBe("daily-today")
+    })
+
     it("throws at request time when no implement is hired", () => {
         const $edition = service("edition").interface<{ id: string }>()
 
