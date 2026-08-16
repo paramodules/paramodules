@@ -3,7 +3,7 @@ import type {
     RegistryRecord,
     UnknownModule
 } from "#types/public"
-import { isModule } from "#utils"
+import { isInterface, isModule } from "#utils"
 import { assertCachingConfig } from "#validation"
 
 /**
@@ -25,12 +25,12 @@ export function buildCacheKey(
     module: UnknownModule & { _caching: CachingConfig<unknown> },
     registry: RegistryRecord
 ) {
-    const moduleId = (module: UnknownModule) => {
-        return [
-            module.tm,
-            module._implementId,
-            module._version
-        ]
+    const moduleId = (service: {
+        tm: string
+        _implementId?: string
+        _version?: number
+    }) => {
+        return [service.tm, service._implementId, service._version]
             .filter((part) => part !== undefined)
             .join(".")
     }
@@ -45,7 +45,15 @@ export function buildCacheKey(
                     registration()
                 :   registration
 
-            if (isModule(supplier.service)) return moduleId(supplier.service)
+            // Params serialize into the key. Modules and interfaces contribute
+            // identity (tm + implement id + version) — never the value, even
+            // when the interface was stamped with .of().
+            if (
+                isModule(supplier.service) ||
+                isInterface(supplier.service)
+            ) {
+                return moduleId(supplier.service)
+            }
 
             if (typeof registration === "function") return undefined
 

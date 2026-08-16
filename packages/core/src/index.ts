@@ -15,7 +15,7 @@ export function service<TM extends string>(tm: TM) {
             return param<TM, TYPE>(tm)
         },
         /**
-         * Declares a port: a trademark and value type with no factory.
+         * Declares an interface: a trademark and value type with no factory.
          * Dependents `required` the interface. Fill it with `.of(value)`
          * or `hire` an `.implement(...)` of the same trademark.
          *

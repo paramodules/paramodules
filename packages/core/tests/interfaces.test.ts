@@ -9,7 +9,7 @@ const valueCaching = {
 }
 
 describe("interfaces", () => {
-    it("declares a port without a factory", () => {
+    it("declares an interface without a factory", () => {
         const $edition = service("edition").interface<{ id: string }>()
 
         expect($edition.tm).toBe("edition")
@@ -48,7 +48,7 @@ describe("interfaces", () => {
         })
 
         // Same shape as hiring `$currentBid` after `$rangeCursor`: the second
-        // hire's transitive `_team` still contains the open port.
+        // hire's transitive `_team` still contains the open interface.
         const $spotBids = service("spotBids").module({
             required: [$edition],
             factory: ({ edition }) => [edition.id]
@@ -76,7 +76,7 @@ describe("interfaces", () => {
         )
     })
 
-    it("type-errors request() until the port is filled with .of() or hire", () => {
+    it("type-errors request() until the interface is filled with .of() or hire", () => {
         const $edition = service("edition").interface<{ id: string }>()
 
         const $title = service("title").module({
@@ -104,7 +104,7 @@ describe("interfaces", () => {
         expect(hired.request({}).get()).toBe("daily-today")
     })
 
-    it("lets hire fill one port while request() still requires the rest", () => {
+    it("lets hire fill one interface while request() still requires the rest", () => {
         const $edition = service("edition").interface<{ id: string }>()
         const $now = service("now").interface<() => string>()
 
@@ -177,15 +177,15 @@ describe("interfaces", () => {
             serializer: serializerFn
         }
 
-        const $now = service("nowPort").interface<() => string>()
+        const $now = service("now").interface<() => string>()
         const nowFactory = vi.fn(() => () => "tick")
 
         const $clock = $now.implement({
             factory: nowFactory
         })
 
-        const leafFactory = vi.fn(({ nowPort }: { nowPort: () => string }) => ({
-            sample: nowPort(),
+        const leafFactory = vi.fn(({ now }: { now: () => string }) => ({
+            sample: now(),
             token: Symbol("cached")
         }))
 
@@ -202,6 +202,35 @@ describe("interfaces", () => {
         expect(second).toBe(first)
         expect(leafFactory).toHaveBeenCalledTimes(1)
         expect(nowFactory).toHaveBeenCalledTimes(1)
+        expect(serializerFn).not.toHaveBeenCalled()
+    })
+
+    it("does not serialize a stamped interface value into the cache key", () => {
+        const serializerFn = vi.fn((value: unknown) => JSON.stringify(value))
+        const caching = {
+            cacher: dummyValueCacher(),
+            serializer: serializerFn
+        }
+
+        const $edition = service("edition").interface<{ id: string }>()
+        const factory = vi.fn(({ edition }: { edition: { id: string } }) => ({
+            edition,
+            token: Symbol("cached")
+        }))
+
+        const $cached = service("cachedStampedEdition")
+            .module({
+                required: [$edition],
+                factory
+            })
+            .caching(caching)
+
+        const first = $cached.request(index($edition.of({ id: "a" }))).get()
+        const second = $cached.request(index($edition.of({ id: "b" }))).get()
+
+        expect(second).toBe(first)
+        expect(first.edition.id).toBe("a")
+        expect(factory).toHaveBeenCalledTimes(1)
         expect(serializerFn).not.toHaveBeenCalled()
     })
 
@@ -327,7 +356,7 @@ describe("interfaces", () => {
         ).toBe("daily-today")
     })
 
-    it("nested ctx still requires ports the parent did not provide", () => {
+    it("nested ctx still requires interfaces the parent did not provide", () => {
         const $edition = service("edition").interface<{ id: string }>()
 
         const $title = service("title").module({
@@ -367,7 +396,7 @@ describe("interfaces", () => {
         expect($hired.request({}).get()).toBe("hired")
     })
 
-    it("nested hire does not re-require ports the parent already has", () => {
+    it("nested hire does not re-require interfaces the parent already has", () => {
         const $edition = service("edition").interface<{ id: string }>()
         const $spotId = service("spotId").param<string>()
         const $priorValue = service("priorValue").interface<string>()
@@ -431,7 +460,7 @@ describe("interfaces", () => {
         ).toBe("daily-today/daily-today")
     })
 
-    it("rejects implement plans whose value type does not extend the port", () => {
+    it("rejects implement plans whose value type does not extend the interface", () => {
         const $edition = service("edition").interface<{ id: string }>()
 
         $edition.implement({
