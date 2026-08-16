@@ -347,7 +347,7 @@ const $myDrafts = service("myDrafts").module({
 | `service(tm)`         | Declare a named identity. `tm` is the runtime-validated graph key (trademark).            |
 | `.param<T>()`         | A typed runtime input supplied at the request entry point.                                |
 | `.init(value)`        | Give a param a default value so it can be omitted from `request(...)`.                    |
-| `.interface<T>()`     | A port: trademark + type, no factory. Dependents `required` it; entry-points `hire` an implement. |
+| `.interface<T>()`     | An interface: trademark + type, no factory. Dependents `required` it; entry-points `hire` an implement. |
 | `.implement({ ... })` | A module that fills an interface. Same trademark, constrained value type.                 |
 | `.module({ ... })`    | A graph node: a value derived from params and other modules.                              |
 | `required`            | Dependencies that must be available to the factory.                                       |
@@ -360,7 +360,7 @@ const $myDrafts = service("myDrafts").module({
 | `.provision()`        | Pre-resolve graph parts that do not depend on open request-time params.                   |
 | `.invalidate()`       | Bump a cached module's version so it and downstream cached modules recompute.             |
 | `.mock()` + `.hire()` | Replace part of a cascade without changing downstream call sites.                         |
-| `.implement()` + `.hire()` | Fill an interface port at the entry-point. Remaining ports still show up as missing `.request()` properties. |
+| `.implement()` + `.hire()` | Fill an interface at the entry-point. Remaining interfaces still show up as missing `.request()` properties. |
 | `ctx(...)`            | Create a nested request scope from inside a factory.                                      |
 | `index(...)`          | Key suppliers by trademark for the object shape `.request(...)` expects.                  |
 | `supplier.get()`      | Read the requested module's value.                                                        |
@@ -655,7 +655,7 @@ const res6 = $profileSummary
 const isCached5 = res5 === res6 // false, because the hired mock has its own _implementId
 ```
 
-The cache key is built from the cached module identity and its cascade: the current module trademark, its version, implement identity when present (implements and mocks), transitive module versions, and serialized params. Interface ports contribute the hired implement's identity (`tm` + implement id + `_version`) — the key builder does not call getters. That means different request params get different cache entries, invalidating an upstream cached module changes the cache key for downstream cached modules, and two implements of the same interface do not share an entry.
+The cache key is built from the cached module identity and its cascade: the current module trademark, its version, implement identity when present (implements and mocks), transitive module versions, and serialized params. Interfaces are keyed like modules: a hired implement contributes `tm` + implement id + `_version`; a `.of(...)` stamp contributes the trademark only. The key builder never serializes an interface value. That means different request params get different cache entries, invalidating an upstream cached module changes the cache key for downstream cached modules, and two implements of the same interface do not share an entry.
 
 For promise-returning factories, use `@paramodules/resource-cacher`, which wraps `@epic-web/cachified`.
 
@@ -772,10 +772,10 @@ const profile = $profile.hire($userMock).request({}).get()
 
 ### Interfaces (dependency inversion)
 
-An **interface** is a port: a trademark and a value type, with no factory. Use it when a leaf package owns modules that need a concept implemented upstream (for example shared bidding modules that need the current edition, which next loads from the route). Shared cannot import next — that would be a cycle — so it `required`s the interface, and the entry-point fills the port with `.of(...)` or `hire`s next's implement.
+An **interface** is a trademark and a value type, with no factory. Use it when a leaf package owns modules that need a concept implemented upstream (for example shared bidding modules that need the current edition, which next loads from the route). Shared cannot import next — that would be a cycle — so it `required`s the interface, and the entry-point fills it with `.of(...)` or `hire`s next's implement.
 
 ```ts
-// shared — port + modules that depend on it
+// shared — interface + modules that depend on it
 const $edition = service("edition").interface<{
     start: string
     end: string
@@ -805,9 +805,9 @@ $page.hire($editionFromRoute).request(index($editionId.of(id))).get()
 $page.request(index($edition.of(row))).get()
 ```
 
-`.implement(...)` returns a module. Hire it at the entry-point like a mock; remaining open ports still appear as missing `.request()` properties (the same as required params). Nested `ctx(...).request(...)` only omits keys the parent already has — a new context may still need `.of(...)` or `hire(...)`. `.request()` throws at runtime if a port is still open.
+`.implement(...)` returns a module. Hire it at the entry-point like a mock; remaining open interfaces still appear as missing `.request()` properties (the same as required params). Nested `ctx(...).request(...)` only omits keys the parent already has — a new context may still need `.of(...)` or `hire(...)`. `.request()` throws at runtime if an interface is still open.
 
-Interfaces can also be stamped with `.of(value)`, the same as params. Stamp the interface you `required`, or `hire` an implement — not a param or module of the same trademark. Cached modules that depend on a **hired** implement key by that implement (`tm` + implement id + `_version`). A `.of(...)` stamp keys like a param (`serializer(value)`). Do not put a getter in a cache key — hire an implement when the port's value is a getter.
+Interfaces can also be stamped with `.of(value)`. Stamp the interface you `required`, or `hire` an implement — not a param or module of the same trademark. Caching treats an interface as a module: hired implement identity (`tm` + implement id + `_version`), or the trademark when stamped. The value is never serialized. If the value belongs in the cache key, use a param.
 
 ---
 
@@ -886,7 +886,7 @@ Sets a default value for a param. Modules that require an initialized param can 
 const $edition = service("edition").interface<Edition | null>()
 ```
 
-Declares a port. Dependents list it in `required`. Fill it with `.implement(...)` and `hire` the implement at the entry-point.
+Declares an interface. Dependents list it in `required`. Fill it with `.implement(...)` and `hire` the implement at the entry-point.
 
 ### `.implement({ required?, optionals?, factory, warmup? })`
 

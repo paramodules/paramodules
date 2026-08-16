@@ -13,7 +13,7 @@ import { Hire } from "#service/hire"
 import { Mock } from "#service/mock"
 
 /**
- * Creates a module that fills an interface port. Hire the result at the
+ * Creates a module that fills an interface. Hire the result at the
  * request entry-point so dependents that `required` the interface receive
  * this implementation.
  *

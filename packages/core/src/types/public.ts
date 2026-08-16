@@ -37,8 +37,8 @@ export interface Param<
 }
 
 /**
- * A port: trademark + value type, no factory. Fill it with `.of(value)` like a
- * param, or `.implement(...)` then `hire` the implement at the entry-point.
+ * An interface: trademark + value type, no factory. Fill it with `.of(value)`
+ * or `.implement(...)` then `hire` the implement at the entry-point.
  */
 export interface Interface<NAME extends string = string, TYPE = unknown>
     extends Service<NAME, TYPE> {
@@ -219,12 +219,12 @@ export type Mock<
 }
 
 export type Implement<
-    PORT extends Interface,
-    TYPE2 extends PORT["_type"],
+    INTERFACE extends Interface,
+    TYPE2 extends INTERFACE["_type"],
     REQUIRED2 extends OriginalService[] = [],
     OPTIONALS2 extends Param[] = []
 > = Module<
-    PORT["tm"],
+    INTERFACE["tm"],
     TYPE2,
     OPTIONALS2[number]["tm"],
     undefined,
@@ -262,9 +262,9 @@ export type ParamSupplier<PARAM extends Param> = {
     _requested: true
 }
 
-export type InterfaceSupplier<PORT extends Interface> = {
-    service: PORT
-    get: () => PORT["_type"]
+export type InterfaceSupplier<INTERFACE extends Interface> = {
+    service: INTERFACE
+    get: () => INTERFACE["_type"]
     _requested: true
 }
 
